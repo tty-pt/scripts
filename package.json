@@ -1,0 +1,36 @@
+{
+  "name": "react-noscripts",
+  "version": "0.1.12",
+  "description": "Less than react-scripts",
+  "main": "./bin/react-noscripts.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "react-scripts",
+    "react",
+    "webpack"
+  ],
+  "author": "quirinpa",
+  "license": "BSD-2-Clause",
+  "dependencies": {
+    "@babel/core": "^7.20.5",
+    "babel-loader": "^9.1.0",
+    "css-loader": "^6.7.2",
+    "eslint": "^8.29.0",
+    "eslint-plugin-react": "^7.31.11",
+    "eslint-webpack-plugin": "^3.2.0",
+    "express": "^4.18.2",
+    "html-webpack-plugin": "^5.5.0",
+    "react-hot-loader": "^4.5.3",
+    "style-loader": "^3.3.1",
+    "typescript": "^4.9.3",
+    "webpack": "^5.75.0",
+    "webpack-dev-middleware": "^6.0.1",
+    "webpack-hot-middleware": "^2.25.3",
+    "workbox-webpack-plugin": "^6.5.4"
+  },
+  "bin": {
+    "react-noscripts": "./bin/react-noscripts.js"
+  }
+}
