@@ -9,7 +9,8 @@ function cexec(cmd) {
     cwd: process.cwd(),
     env: {
       ...process.env,
-      NODE_PATH: process.cwd() + "/node_modules",
+      NODE_PATH: process.cwd() + "/node_modules:" + __dirname + "/node_modules",
+      __dirname,
     },
     stdio: [process.stdin, process.stdout, process.stderr],
     encoding: "utf-8"

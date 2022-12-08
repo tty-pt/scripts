@@ -7,11 +7,16 @@ process.on("unhandledRejection", err => {
   throw err;
 });
 
+function scriptCmd(path) {
+  return process.execPath + ' ' + require.resolve("../scripts/" + path);
+}
+
 const scripts = {
-  build: "*../scripts/build",
-  start: "*../scripts/start",
+  build: scriptCmd("build"),
+  start: scriptCmd("start"),
   test: "npx jest --projects " + process.cwd(),
   lint: "npx eslint --format compact --ext .js,.jsx,.ts,.tsx src",
+  init: __dirname + "/../scripts/init.sh",
 };
 
 const args = process.argv.slice(2);

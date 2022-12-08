@@ -23,5 +23,3 @@ app.get("*", (req, res) => {
 });
 
 app.listen(port, () => console.log("Webpack running on port " + port));
-
-console.log("wtf");
