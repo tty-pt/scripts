@@ -1,6 +1,6 @@
 {
   "name": "react-noscripts",
-  "version": "0.1.75",
+  "version": "0.1.102",
   "description": "Less than react-scripts",
   "main": "./setup.js",
   "scripts": {
@@ -33,6 +33,7 @@
     "webpack": "^5.75.0",
     "webpack-dev-middleware": "^6.0.1",
     "webpack-hot-middleware": "^2.25.3",
+    "terser-webpack-plugin": "^5.3.6",
     "workbox-webpack-plugin": "^6.5.4"
   },
   "bin": {

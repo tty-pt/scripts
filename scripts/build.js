@@ -1,4 +1,6 @@
-const { compiler } = require("../webpack");
+const { webpack, makeConfig } = require("../webpack");
+
+const compiler = webpack(makeConfig({}));
 
 compiler.run((err, stats) => {
   if (err)

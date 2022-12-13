@@ -1,5 +1,5 @@
 const express = require("express");
-const { compiler, webpackConfig } = require("../webpack");
+const { webpack, makeConfig } = require("../webpack");
 const webpackHotMiddleware = require("webpack-hot-middleware");
 const webpackDevMiddleware = require("webpack-dev-middleware");
 const fs = require("fs");
@@ -10,8 +10,12 @@ const app = express();
 if (fs.existsSync("./src/setupProxy.js"))
   require(process.cwd() + "/src/setupProxy.js")(app);
 
+const config = makeConfig({ development: true });
+
+const compiler = webpack(config);
+
 app.use(webpackDevMiddleware(compiler, {
-  publicPath: webpackConfig.output.publicPath,
+  publicPath: config.output.publicPath,
 }));
 
 app.use(webpackHotMiddleware(compiler));

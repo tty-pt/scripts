@@ -1,9 +1,8 @@
 const { bias } = require("./bias");
 const webpack = require("webpack");
-const webpackConfig = require(bias("webpack.config.js"));
-const compiler = webpack(webpackConfig);
+const makeConfig = require(bias("webpack.config.js"));
 
 module.exports = {
-  webpackConfig,
-  compiler,
+  webpack,
+  makeConfig,
 };
