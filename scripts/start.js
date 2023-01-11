@@ -20,7 +20,7 @@ app.use(webpackDevMiddleware(compiler, {
 
 app.use(webpackHotMiddleware(compiler));
 
-app.use("/public", express.static("/public"));
+app.use(express.static(process.cwd() + "/public"));
 
 app.get("*", (req, res) => {
   res.sendFile("/public/index.html", { root: "./" });

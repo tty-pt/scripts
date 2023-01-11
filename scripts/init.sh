@@ -1,6 +1,7 @@
 #! /bin/sh
 
-temp="`mktemp "react-noscripts-XXXXXXX"`"
+temp="`mktemp "/tmp/tty-pt-scripts-XXXXXXX"`"
+name="@tty-pt/scripts"
 
 minstall() {
 	ls node_modules > $temp
@@ -10,7 +11,7 @@ minstall() {
 if test -d "./node_modules"; then
 	version=`cat package.json | grep '"react"' | awk '{print $2}' | sed 's/[^1-9]*\([1-9]*\).*/\1/'`
 	minstall <<EOF
-react-noscripts
+@tty-pt/scripts
 @hot-loader/react-dom@$version
 EOF
 else
@@ -19,10 +20,10 @@ else
 	fi
 
 	cp -r $__dirname/src $__dirname/public $__dirname/jsconfig.json $__dirname/.eslintrc.js .
-	npm i --save-dev react-noscripts react@17 react-dom@17 @hot-loader/react-dom@17
+	npm i --save-dev @tty-pt/scripts react@17 react-dom@17 @hot-loader/react-dom@17
 fi
 
-jq '.scripts.start = "react-noscripts start" | .scripts.build = "react-noscripts build" | .scripts.lint = "react-noscripts lint" | .scripts.test = "react-noscripts test"' package.json >$temp
+jq ".scripts.start = 'scripts start' | .scripts.build = 'scripts build' | .scripts.lint = 'scripts lint' | .scripts.test = 'scripts test'" package.json >$temp
 mv $temp package.json
 
-npx react-noscripts start
+npx scripts start

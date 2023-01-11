@@ -14,6 +14,7 @@ function scriptCmd(path) {
 const scripts = {
   build: scriptCmd("build"),
   start: scriptCmd("start"),
+  "install-peers": scriptCmd("install-peers"),
   test: "npx jest --projects " + process.cwd(),
   lint: "npx eslint --format compact --ext .js,.jsx,.ts,.tsx src",
   init: __dirname + "/../scripts/init.sh",

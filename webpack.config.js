@@ -1,10 +1,13 @@
 const path = require("path");
+const fs = require("fs");
 const webpack = require("webpack");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
 const package = require(process.cwd() + "/package.json");
 const entryPoint = "./src/index.jsx";
+
+const hasEslint = fs.existsSync(process.cwd() + "/.eslintrc.js");
 
 function libraryExternals() {
   return Object.keys(package.peerDependencies)
@@ -25,13 +28,13 @@ module.exports = function (env) {
     output: {
       path: path.resolve(process.cwd(), "build"),
     },
-    plugins: [
+    plugins: hasEslint ? [
       new ESLintPlugin({
         context: "./",
         eslintPath: require.resolve("eslint"),
         extensions: ["js", "jsx", "ts", "tsx"],
       }),
-    ],
+    ] : [],
     module: {
       rules: [
         {
@@ -71,46 +74,47 @@ module.exports = function (env) {
 
   if (library) {
     config.externals = libraryExternals();
+    config.externalsType = "commonjs";
 
     config.output.library = {
       name: package.name,
       type: "umd",
     };
+
+    config.plugins.push(
+      new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 })
+    );
   } else {
     config.plugins.push(
       new HtmlWebpackPlugin({
         template: "public/index.html",
       })
     );
-  }
 
-  if (development) {
-    config.mode = "development";
-    config.entry.main = [
-      "react-hot-loader/patch",
-      "webpack-hot-middleware/client",
-      entryPoint,
-    ];
-    config.devtool = "inline-source-map";
-    config.devServer = {
-      open: true,
-      hot: true,
-      host: "localhost",
-    };
+    if (development) {
+      config.mode = "development";
+      config.entry.main = [
+        "react-hot-loader/patch",
+        "webpack-hot-middleware/client",
+        entryPoint,
+      ];
+      config.devtool = "inline-source-map";
+      config.devServer = {
+        open: true,
+        hot: true,
+        host: "localhost",
+      };
 
-    config.plugins.push(
-      new webpack.HotModuleReplacementPlugin()
-    );
+      config.plugins.push(
+        new webpack.HotModuleReplacementPlugin()
+      );
 
-    config.module.rules[0].options.plugins = [
-      "react-hot-loader/babel"
-    ];
+      config.module.rules[0].options.plugins = [
+        "react-hot-loader/babel"
+      ];
 
-    config.resolve.alias["react-dom"] = "@hot-loader/react-dom";
-  }
-
-  else {
-    if (!library)
+      config.resolve.alias["react-dom"] = "@hot-loader/react-dom";
+    } else
       config.plugins.push(
         new WorkboxWebpackPlugin.GenerateSW(),
       );
