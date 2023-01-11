@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 const { cexec } = require("../cexec");
-const { bias } = require("../bias");
 
 process.on("unhandledRejection", err => {
   throw err;
@@ -12,7 +11,8 @@ function scriptCmd(path) {
 }
 
 const scripts = {
-  build: scriptCmd("build"),
+  build: scriptCmd("build"), // TODO why custom script now?
+  watch: "npx webpack --mode=development --watch",
   start: scriptCmd("start"),
   "install-peers": scriptCmd("install-peers"),
   test: "npx jest --projects " + process.cwd(),
