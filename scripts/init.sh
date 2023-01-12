@@ -23,7 +23,7 @@ else
 	npm i --save-dev @tty-pt/scripts react@17 react-dom@17 @hot-loader/react-dom@17
 fi
 
-jq ".scripts.start = 'scripts start' | .scripts.build = 'scripts build' | .scripts.watch = 'scripts watch' | .scripts.lint = 'scripts lint' | .scripts.test = 'scripts test'" package.json >$temp
+jq ".scripts.start = \"scripts start\" | .scripts.build = \"scripts build\" | .scripts.watch = \"scripts watch\" | .scripts.lint = \"scripts lint\" | .scripts.test = \"scripts test\"" package.json >$temp
 mv $temp package.json
 
 npx scripts start
