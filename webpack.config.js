@@ -39,11 +39,13 @@ module.exports = function (env) {
       rules: [
         {
           test: /\.(js|jsx)$/i,
-          loader: "babel-loader",
-          exclude: /node_modules/,
-          options: {
-            presets: ["@babel/preset-env", "@babel/preset-react"],
-            plugins: [],
+          use: {
+            loader: "babel-loader",
+            exclude: /node_modules/,
+            options: {
+              presets: ["@babel/preset-env", "@babel/preset-react"],
+              plugins: [],
+            },
           },
         },
         {
