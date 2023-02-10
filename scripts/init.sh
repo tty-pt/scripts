@@ -24,7 +24,7 @@ else
 		npm init
 	fi
 
-	cp -r $__dirname/src $__dirname/public $__dirname/jsconfig.json $__dirname/.eslintrc.js .
+	cp -r $__dirname/src $__dirname/public $__dirname/index.html $__dirname/jsconfig.json $__dirname/.eslintrc.js .
 	npm i --save-dev @tty-pt/scripts react@$react_version react-dom@$react_version @hot-loader/react-dom@$react_version
 fi
 

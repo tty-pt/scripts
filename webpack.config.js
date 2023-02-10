@@ -5,7 +5,6 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
 const package = require(process.cwd() + "/package.json");
-const entryPoint = "./src/index.jsx";
 
 const hasEslint = fs.existsSync(process.cwd() + "/.eslintrc.js");
 
@@ -18,7 +17,8 @@ function libraryExternals() {
 }
 
 module.exports = function (env) {
-  const { development, library } = env;
+  const { development, library, srcdir = "src", entry = "index.jsx", buggy } = env;
+  const entryPoint = "./" + srcdir + "/" + entry;
 
   const config = {
     mode: "production",
@@ -39,9 +39,9 @@ module.exports = function (env) {
       rules: [
         {
           test: /\.(js|jsx)$/i,
+          exclude: /node_modules/,
           use: {
             loader: "babel-loader",
-            exclude: /node_modules/,
             options: {
               presets: ["@babel/preset-env", "@babel/preset-react"],
               plugins: [],
@@ -59,12 +59,12 @@ module.exports = function (env) {
       ],
     },
     resolveLoader: {
-      modules: [ "node_modules", __dirname + "/node_modules" ],
+      modules: [ "loaders", "node_modules", __dirname + "/node_modules" ],
       extensions: ['.js', '.json'],
       mainFields: ['loader', 'main'],
     },
     resolve: {
-      modules: [ "src", "node_modules", path.resolve(__dirname, "/node_modules") ],
+      modules: [ srcdir, "node_modules", path.resolve(__dirname, "/node_modules") ],
       extensions: [".js", ".jsx"],
       alias: {},
       // vscode: require.resolve(
@@ -86,10 +86,14 @@ module.exports = function (env) {
     config.plugins.push(
       new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 })
     );
+
+    if (development) {
+      config.devtool = "inline-source-map";
+    }
   } else {
     config.plugins.push(
       new HtmlWebpackPlugin({
-        template: "public/index.html",
+        template: buggy ? "public/index.html" : "index.html",
       })
     );
 
@@ -111,7 +115,7 @@ module.exports = function (env) {
         new webpack.HotModuleReplacementPlugin()
       );
 
-      config.module.rules[0].options.plugins = [
+      config.module.rules[0].use.options.plugins = [
         "react-hot-loader/babel"
       ];
 

@@ -1,6 +1,6 @@
 {
   "name": "@tty-pt/scripts",
-  "version": "0.0.1-11",
+  "version": "0.0.1-25",
   "description": "Less than react-scripts",
   "main": "./setup.js",
   "scripts": {

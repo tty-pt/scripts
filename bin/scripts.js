@@ -12,11 +12,11 @@ function scriptCmd(path) {
 
 const scripts = {
   build: scriptCmd("build"), // TODO why custom script now?
-  watch: "npx webpack --mode=development --watch",
+  watch: "pnpx webpack --mode=development --watch",
   start: scriptCmd("start"),
   "install-peers": scriptCmd("install-peers"),
-  test: "npx jest --projects " + process.cwd(),
-  lint: "npx eslint --format compact --ext .js,.jsx,.ts,.tsx src",
+  test: "pnpx jest --projects " + process.cwd(),
+  lint: "pnpx eslint --format compact --ext .js,.jsx,.ts,.tsx src",
   init: __dirname + "/../scripts/init.sh",
 };
 
