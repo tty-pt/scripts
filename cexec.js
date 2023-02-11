@@ -7,6 +7,7 @@ function cexec(cmd, nodeArgs) {
     cwd: process.cwd(),
     env: {
       ...process.env,
+      PATH: process.env.PATH + ":" + process.cwd() + "/node_modules/.bin:" + __dirname + "/node_modules/.bin",
       NODE_PATH: process.cwd() + "/node_modules:" + __dirname + "/node_modules",
       __dirname,
     },

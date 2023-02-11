@@ -5,6 +5,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
 const package = require(process.cwd() + "/package.json");
+const scriptsPackage = require("./package.json");
 
 const hasEslint = fs.existsSync(process.cwd() + "/.eslintrc.js");
 
@@ -16,9 +17,22 @@ function libraryExternals() {
     }), {});
 }
 
+function depModule(dep) {
+  const thisPath = require.resolve(dep);
+  return thisPath.substring(0, thisPath.lastIndexOf(dep) - 1);
+}
+
+function getDepModules() {
+  return [
+    "loaders", "node_modules", "node_modules/.pnpm/*",
+    "node_modules/@tty-pt/scripts/node_modules",
+  ].concat(Object.keys(scriptsPackage.dependencies).map(depModule));
+}
+
 module.exports = function (env) {
   const { development, library, srcdir = "src", entry = "index.jsx", buggy } = env;
   const entryPoint = "./" + srcdir + "/" + entry;
+  const depModules = getDepModules();
 
   const config = {
     mode: "production",
@@ -43,7 +57,7 @@ module.exports = function (env) {
           use: {
             loader: "babel-loader",
             options: {
-              presets: ["@babel/preset-env", "@babel/preset-react"],
+              presets: ["@babel/preset-env", "@babel/preset-react"].map(require.resolve),
               plugins: [],
             },
           },
@@ -59,12 +73,12 @@ module.exports = function (env) {
       ],
     },
     resolveLoader: {
-      modules: [ "loaders", "node_modules", __dirname + "/node_modules" ],
+      modules: depModules,
       extensions: ['.js', '.json'],
       mainFields: ['loader', 'main'],
     },
     resolve: {
-      modules: [ srcdir, "node_modules", path.resolve(__dirname, "/node_modules") ],
+      modules: [ srcdir ].concat(depModules),
       extensions: [".js", ".jsx"],
       alias: {},
       // vscode: require.resolve(

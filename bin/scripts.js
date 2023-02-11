@@ -12,12 +12,13 @@ function scriptCmd(path) {
 
 const scripts = {
   build: scriptCmd("build"), // TODO why custom script now?
-  watch: "pnpx webpack --mode=development --watch",
+  watch: "pnpm exec webpack --mode=development --watch",
   start: scriptCmd("start"),
   "install-peers": scriptCmd("install-peers"),
-  test: "pnpx jest --projects " + process.cwd(),
-  lint: "pnpx eslint --format compact --ext .js,.jsx,.ts,.tsx src",
+  test: "pnpm exec jest --projects " + process.cwd(),
+  lint: "pnpm exec eslint --format compact --ext .js,.jsx,.ts,.tsx src",
   init: __dirname + "/../scripts/init.sh",
+  // installPeers: "jq -r .peerDependencies package.json | tail -n +2 | head -n -1 | sed 's/[\":^,]*//g' | awk '{ print $1 \"@\" $2 }'",
 };
 
 const args = process.argv.slice(2);
