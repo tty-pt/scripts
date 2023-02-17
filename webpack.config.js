@@ -63,6 +63,11 @@ module.exports = function (env) {
           },
         },
         {
+          test: /\.(ts|tsx)$/i,
+          exclude: /node_modules/,
+          loader: "ts-loader",
+        },
+        {
           test: /\.css$/i,
           use: ["style-loader", "css-loader"],
         },
