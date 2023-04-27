@@ -24,7 +24,7 @@ function depModule(dep) {
 
 function getDepModules() {
   return [
-    "loaders", "node_modules", "node_modules/.pnpm/*",
+    "loaders", "node_modules", "node_modules/.pnpm", "node_modules/.pnpm/*",
     "node_modules/@tty-pt/scripts/node_modules",
   ].concat(Object.keys(scriptsPackage.dependencies).map(depModule));
 }
@@ -55,7 +55,7 @@ module.exports = function (env) {
           test: /\.(js|jsx)$/i,
           exclude: /node_modules/,
           use: {
-            loader: "babel-loader",
+            loader: require.resolve("babel-loader"),
             options: {
               presets: ["@babel/preset-env", "@babel/preset-react"].map(require.resolve),
               plugins: [],
@@ -65,11 +65,11 @@ module.exports = function (env) {
         {
           test: /\.(ts|tsx)$/i,
           exclude: /node_modules/,
-          loader: "ts-loader",
+          loader: require.resolve("ts-loader"),
         },
         {
           test: /\.css$/i,
-          use: ["style-loader", "css-loader"],
+          use: ["style-loader", "css-loader"].map(require.resolve),
         },
         {
           test: /\.(eot|svg|ttf|woff|woff2|png|jpg|gif)$/i,
@@ -81,11 +81,13 @@ module.exports = function (env) {
       modules: depModules,
       extensions: ['.js', '.json'],
       mainFields: ['loader', 'main'],
+      symlinks: true,
     },
     resolve: {
       modules: [ srcdir ].concat(depModules),
-      extensions: [".js", ".jsx"],
+      extensions: [".js", ".jsx", ".ts", ".tsx"],
       alias: {},
+      symlinks: true,
       // vscode: require.resolve(
       //   "@codingame/monaco-languageclient/lib/vscode-compatibility"
       // ),
@@ -119,8 +121,8 @@ module.exports = function (env) {
     if (development) {
       config.mode = "development";
       config.entry.main = [
-        "react-hot-loader/patch",
-        "webpack-hot-middleware/client",
+        require.resolve("react-hot-loader/patch"),
+        require.resolve("webpack-hot-middleware/client"),
         entryPoint,
       ];
       config.devtool = "inline-source-map";
@@ -135,7 +137,8 @@ module.exports = function (env) {
       );
 
       config.module.rules[0].use.options.plugins = [
-        "react-hot-loader/babel"
+        require.resolve("react-hot-loader/babel"),
+        // __dirname + "/../../../node_modules/react-hot-loader/babel"
       ];
 
       config.resolve.alias["react-dom"] = "@hot-loader/react-dom";
