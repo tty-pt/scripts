@@ -11,10 +11,7 @@ const app = express();
 if (fs.existsSync("./src/setupProxy.js"))
   require(process.cwd() + "/src/setupProxy.js")(app);
 
-const config = makeConfig({
-  ...process.env,
-  development: true,
-});
+const config = makeConfig({ development: true });
 
 const compiler = webpack(config);
 

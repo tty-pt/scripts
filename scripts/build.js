@@ -1,5 +1,4 @@
 const { webpack, makeConfig } = require("../webpack");
-
 const compiler = webpack(makeConfig({}));
 
 compiler.run((err, stats) => {

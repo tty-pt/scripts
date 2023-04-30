@@ -1,6 +1,7 @@
 const path = require("path");
 const fs = require("fs");
 const webpack = require("webpack");
+const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
@@ -8,9 +9,11 @@ const package = require(process.cwd() + "/package.json");
 const scriptsPackage = require("./package.json");
 
 const hasEslint = fs.existsSync(process.cwd() + "/.eslintrc.js");
+const swcConfigPath = process.cwd() + "/swc.config.json";
+const hasSwcConfig = fs.existsSync(swcConfigPath);
 
 function libraryExternals() {
-  return Object.keys(package.peerDependencies)
+  return Object.keys(package.peerDependencies ?? {})
     .reduce((a, key) => ({
       ...a,
       [key]: key,
@@ -22,24 +25,48 @@ function depModule(dep) {
   return thisPath.substring(0, thisPath.lastIndexOf(dep) - 1);
 }
 
+function relsolve(pathName) {
+  return path.resolve(process.cwd(), pathName);
+}
+
 function getDepModules() {
   return [
-    "loaders", "node_modules", "node_modules/.pnpm", "node_modules/.pnpm/*",
+    "../..",
+    "../../node_modules",
+    "../../node_modules/.pnpm/@types+node@16.18.35/node_modules",
+    "node_modules",
     "node_modules/@tty-pt/scripts/node_modules",
+    "src"
   ].concat(Object.keys(scriptsPackage.dependencies).map(depModule));
 }
 
-module.exports = function (env) {
-  const { development, library, srcdir = "src", entry = "index.jsx", buggy } = env;
-  const entryPoint = "./" + srcdir + "/" + entry;
-  const depModules = getDepModules();
+const swcConfig = hasSwcConfig ? JSON.parse(fs.readFileSync(swcConfigPath, "utf-8")) : null;
 
+const defaultConfig = {
+  entry: "./src/index.jsx",
+  development: false,
+  stringEntry: false,
+  outputExtension: "js",
+  template: "./public/index.html",
+};
+
+const scriptsConfig = {
+  ...defaultConfig,
+  ...(package?.["@tty-pt/scripts"] ?? {}),
+};
+
+const depModules = getDepModules();
+
+module.exports = function makeConfig(env) {
+  const { template, library, entry, stringEntry, outputExtension } = scriptsConfig;
+
+  const development = env.development ?? scriptsConfig.development;
+  
   const config = {
     mode: "production",
-    entry: {
-      main: [entryPoint],
-    },
+    entry: stringEntry ? entry : { main: [entry] },
     output: {
+      filename: "[name]." + outputExtension,
       path: path.resolve(process.cwd(), "build"),
     },
     plugins: hasEslint ? [
@@ -52,20 +79,32 @@ module.exports = function (env) {
     module: {
       rules: [
         {
-          test: /\.(js|jsx)$/i,
+          test: /\.(js|ts|tsx)$/i,
           exclude: /node_modules/,
           use: {
-            loader: require.resolve("babel-loader"),
-            options: {
-              presets: ["@babel/preset-env", "@babel/preset-react"].map(require.resolve),
-              plugins: [],
+            loader: require.resolve("swc-loader"),
+            options: swcConfig ?? {
+              sourceMaps: development,
+              minify: !development,
             },
           },
         },
         {
-          test: /\.(ts|tsx)$/i,
+          test: /\.jsx$/i,
           exclude: /node_modules/,
-          loader: require.resolve("ts-loader"),
+          use: {
+            loader: require.resolve("swc-loader"),
+            options: swcConfig ?? {
+              sourceMaps: development,
+              jsc: {
+                parser: {
+                  syntax: "ecmascript",
+                  jsx: true,
+                }
+              },
+              minify: !development,
+            },
+          },
         },
         {
           test: /\.css$/i,
@@ -84,9 +123,17 @@ module.exports = function (env) {
       symlinks: true,
     },
     resolve: {
-      modules: [ srcdir ].concat(depModules),
+      modules: depModules,
       extensions: [".js", ".jsx", ".ts", ".tsx"],
-      alias: {},
+      alias: {
+        react: relsolve('../../node_modules/react'),
+        "react-dom": relsolve('../../node_modules/react-dom'),
+        "@emotion/react": relsolve('../../node_modules/@emotion/react'),
+        "@emotion/styled": relsolve('../../node_modules/@emotion/styled'),
+        "@types/node": relsolve('../../node_modules/@types/node'),
+        "@types/react": relsolve('../../node_modules/@types/react'),
+        "@types/react-dom": relsolve('../../node_modules/@types/react-dom'),
+      },
       symlinks: true,
       // vscode: require.resolve(
       //   "@codingame/monaco-languageclient/lib/vscode-compatibility"
@@ -113,17 +160,14 @@ module.exports = function (env) {
     }
   } else {
     config.plugins.push(
-      new HtmlWebpackPlugin({
-        template: buggy ? "public/index.html" : "index.html",
-      })
+      new HtmlWebpackPlugin({ template })
     );
 
     if (development) {
       config.mode = "development";
       config.entry.main = [
-        require.resolve("react-hot-loader/patch"),
         require.resolve("webpack-hot-middleware/client"),
-        entryPoint,
+        entry,
       ];
       config.devtool = "inline-source-map";
       config.devServer = {
@@ -136,12 +180,13 @@ module.exports = function (env) {
         new webpack.HotModuleReplacementPlugin()
       );
 
-      config.module.rules[0].use.options.plugins = [
-        require.resolve("react-hot-loader/babel"),
-        // __dirname + "/../../../node_modules/react-hot-loader/babel"
-      ];
-
-      config.resolve.alias["react-dom"] = "@hot-loader/react-dom";
+      config.plugins.push(
+        new ReactRefreshWebpackPlugin({
+          overlay: {
+            sockIntegration: "whm",
+          },
+        }),
+      );
     } else
       config.plugins.push(
         new WorkboxWebpackPlugin.GenerateSW(),
@@ -149,4 +194,4 @@ module.exports = function (env) {
   }
 
   return config;
-};
+}
