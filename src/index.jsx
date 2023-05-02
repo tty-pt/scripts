@@ -1,4 +1,7 @@
-import setup from "@tty-pt/scripts";
+import React from "react";
+import ReactDOM from "react-dom/client";
 import App from "./App";
 
-setup(App, "./App", document.getElementById("root"), () => require("./App").default);
+const element = document.getElementById("root");
+const root = ReactDOM.createRoot(element);
+root.render(<App />);

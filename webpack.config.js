@@ -9,8 +9,8 @@ const package = require(process.cwd() + "/package.json");
 const scriptsPackage = require("./package.json");
 
 const hasEslint = fs.existsSync(process.cwd() + "/.eslintrc.js");
-const swcConfigPath = process.cwd() + "/swc.config.json";
-const hasSwcConfig = fs.existsSync(swcConfigPath);
+const { bias } = require("./bias.js");
+const swcConfigPath = bias(".swcrc");
 
 function libraryExternals() {
   return Object.keys(package.peerDependencies ?? {})
@@ -29,18 +29,30 @@ function relsolve(pathName) {
   return path.resolve(process.cwd(), pathName);
 }
 
+function _relsolve(pathName) {
+  return path.resolve(__dirname, "../..", pathName);
+}
+
+function scrsolve(pathName) {
+  return path.resolve(__dirname, "node_modules/@tty-pt/scripts/node_modules", pathName);
+}
+
 function getDepModules() {
   return [
-    "../..",
-    "../../node_modules",
-    "../../node_modules/.pnpm/@types+node@16.18.35/node_modules",
+    // relsolve("."),
+    // relsolve("."),
     "node_modules",
+    // relsolve("node_modules"),
     "node_modules/@tty-pt/scripts/node_modules",
+    // path.resolve(process.cwd(), "./node_modules/@tty-pt/scripts/node_modules"),
+    // relsolve("./node_modules"),
+    // relsolve("./node_modules/.pnpm/@types+node@16.18.35/node_modules"),
+    // relsolve("./node_modules/.pnpm/@types+node@16.18.35/node_modules"),
     "src"
   ].concat(Object.keys(scriptsPackage.dependencies).map(depModule));
 }
 
-const swcConfig = hasSwcConfig ? JSON.parse(fs.readFileSync(swcConfigPath, "utf-8")) : null;
+const swcConfig = JSON.parse(fs.readFileSync(swcConfigPath, "utf-8"));
 
 const defaultConfig = {
   entry: "./src/index.jsx",
@@ -83,7 +95,8 @@ module.exports = function makeConfig(env) {
           exclude: /node_modules/,
           use: {
             loader: require.resolve("swc-loader"),
-            options: swcConfig ?? {
+            options: {
+              ...swcConfig[0],
               sourceMaps: development,
               minify: !development,
             },
@@ -94,14 +107,9 @@ module.exports = function makeConfig(env) {
           exclude: /node_modules/,
           use: {
             loader: require.resolve("swc-loader"),
-            options: swcConfig ?? {
+            options: {
+              ...swcConfig[1],
               sourceMaps: development,
-              jsc: {
-                parser: {
-                  syntax: "ecmascript",
-                  jsx: true,
-                }
-              },
               minify: !development,
             },
           },
@@ -126,13 +134,19 @@ module.exports = function makeConfig(env) {
       modules: depModules,
       extensions: [".js", ".jsx", ".ts", ".tsx"],
       alias: {
-        react: relsolve('../../node_modules/react'),
-        "react-dom": relsolve('../../node_modules/react-dom'),
-        "@emotion/react": relsolve('../../node_modules/@emotion/react'),
-        "@emotion/styled": relsolve('../../node_modules/@emotion/styled'),
-        "@types/node": relsolve('../../node_modules/@types/node'),
-        "@types/react": relsolve('../../node_modules/@types/react'),
-        "@types/react-dom": relsolve('../../node_modules/@types/react-dom'),
+        react: relsolve('node_modules/react'),
+        "react-dom": relsolve('node_modules/react-dom'),
+        // "@emotion/react": scrsolve('node_modules/@emotion/react'),
+        // "@emotion/react": relsolve('node_modules/@emotion/react/dist/emotion-react.browser.esm.js'),
+        // "@emotion/styled": relsolve('node_modules/@emotion/styled'),
+        // "@types/node": path.resolve(process.cwd() + 'node_modules/@types/node'),
+        // "@types/node": scrsolve('@types/node'),
+        // "@types/node": relsolve('node_modules/@types/node'),
+        // "@types/node": relsolve('node_modules/@types/node'),
+        // "@types/react": relsolve('node_modules/@types/react'),
+        // "@types/react-dom": relsolve('node_modules/@types/react-dom'),
+        // "@mov-ai/mov-fe-lib-core": relsolve('libs/core'),
+        // "@mov-ai/mov-fe-lib-react": relsolve('libs/mov-react'),
       },
       symlinks: true,
       // vscode: require.resolve(
@@ -142,9 +156,15 @@ module.exports = function makeConfig(env) {
     externals: {},
   };
 
+  if (development) {
+    config.mode = "development";
+    config.devtool = "inline-source-map";
+  }
+
   if (library) {
     config.externals = libraryExternals();
     config.externalsType = "commonjs";
+    // config.externalsType = "module";
 
     config.output.library = {
       name: package.name,
@@ -155,16 +175,15 @@ module.exports = function makeConfig(env) {
       new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 })
     );
 
-    if (development) {
-      config.devtool = "inline-source-map";
-    }
+    config.experiments = {
+      outputModule: true,
+    };
   } else {
     config.plugins.push(
       new HtmlWebpackPlugin({ template })
     );
 
     if (development) {
-      config.mode = "development";
       config.entry.main = [
         require.resolve("webpack-hot-middleware/client"),
         entry,
