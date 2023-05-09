@@ -22,10 +22,12 @@ const scripts = {
   start: scriptCmd("start"), // watch + watch-dev
   run: "NODE_ENV=production node dist/main.js",
   "install-peers": scriptCmd("install-peers"),
-  test: "node node_modules/jest/bin/jest.js",
+  test: "node node_modules/@tty-pt/scripts/node_modules/jest/bin/jest.js",
   lint: "eslint --format compact --ext .js,.jsx,.ts,.tsx src",
   init: __dirname + "/../scripts/init.sh",
-  installPeers: "jq -r .peerDependencies package.json | tail -n +2 | head -n -1 | sed 's/[\":^,]*//g' | awk '{ print $1 \"@\" $2 }'",
+  storybook: "node node_modules/@tty-pt/scripts/node_modules/storybook dev",
+  "build-storyboook": "node node_modules/@tty-pt/scripts/node_modules/storybook build -s public",
+  "install-peers": "jq -r .peerDependencies package.json | tail -n +2 | head -n -1 | sed 's/[\":^,]*//g' | awk '{ print $1 \"@\" $2 }'",
 };
 
 const args = process.argv.slice(2);
