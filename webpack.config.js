@@ -29,25 +29,18 @@ function relsolve(pathName) {
   return path.resolve(process.cwd(), pathName);
 }
 
-function _relsolve(pathName) {
-  return path.resolve(__dirname, "../..", pathName);
-}
+// function _relsolve(pathName) {
+//   return path.resolve(__dirname, "../..", pathName);
+// }
 
-function scrsolve(pathName) {
-  return path.resolve(__dirname, "node_modules/@tty-pt/scripts/node_modules", pathName);
-}
+// function scrsolve(pathName) {
+//   return path.resolve(__dirname, "node_modules/@tty-pt/scripts/node_modules", pathName);
+// }
 
 function getDepModules() {
   return [
-    // relsolve("."),
-    // relsolve("."),
     "node_modules",
-    // relsolve("node_modules"),
     "node_modules/@tty-pt/scripts/node_modules",
-    // path.resolve(process.cwd(), "./node_modules/@tty-pt/scripts/node_modules"),
-    // relsolve("./node_modules"),
-    // relsolve("./node_modules/.pnpm/@types+node@16.18.35/node_modules"),
-    // relsolve("./node_modules/.pnpm/@types+node@16.18.35/node_modules"),
     "src"
   ].concat(Object.keys(scriptsPackage.dependencies).map(depModule));
 }

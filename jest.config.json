@@ -1,0 +1,18 @@
+{
+  "testEnvironment": "jsdom",
+  "transform": {
+     "\\.(js|jsx|ts|tsx)$": "@swc/jest"
+  },
+  "transformIgnorePatterns": [
+    "<rootDir>/node_modules/(?!(@tty-pt/styles|jest-)?)",
+    "<rootDir>/node_modules/@babel/core"
+  ],
+  "moduleNameMapper": {
+    "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
+      "<rootDir>/node_modules/@tty-pt/scripts/fileMock.js",
+    "\\.(css)$": "<rootDir>/node_modules/@tty-pt/scripts/fileMock.js"
+  },
+  "globals": {
+    "window": {}
+  }
+}

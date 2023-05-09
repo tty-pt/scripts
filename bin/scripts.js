@@ -22,7 +22,7 @@ const scripts = {
   start: scriptCmd("start"), // watch + watch-dev
   run: "NODE_ENV=production node dist/main.js",
   "install-peers": scriptCmd("install-peers"),
-  test: "jest --projects " + process.cwd(),
+  test: "node node_modules/jest/bin/jest.js",
   lint: "eslint --format compact --ext .js,.jsx,.ts,.tsx src",
   init: __dirname + "/../scripts/init.sh",
   installPeers: "jq -r .peerDependencies package.json | tail -n +2 | head -n -1 | sed 's/[\":^,]*//g' | awk '{ print $1 \"@\" $2 }'",
