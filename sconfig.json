@@ -1,4 +1,5 @@
 {
+    "esModuleInterop": true,
     "compilerOptions": {
         "baseUrl": "./src",
         "outDir": "./build/",
@@ -21,5 +22,6 @@
     "include": [
         "./src/",
         "./lib/"
-    ]
+    ],
+    "transform": {}
 }

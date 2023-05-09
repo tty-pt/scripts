@@ -1,7 +1,7 @@
 [{
   "$schema": "https://json.schemastore.org/swcrc",
   "module": {
-    "type": "umd"
+    "type": "commonjs"
   },
   "jsc": {
     "parser": {
@@ -24,11 +24,12 @@
     "externalHelpers": false,
     "keepClassNames": false
   },
-  "minify": false
+  "minify": false,
+  "isModule": true,
 }, {
   "$schema": "https://json.schemastore.org/swcrc",
   "module": {
-    "type": "umd"
+    "type": "commonjs"
   },
   "jsc": {
     "parser": {
@@ -51,5 +52,6 @@
     "externalHelpers": false,
     "keepClassNames": false
   },
-  "minify": false
+  "minify": false,
+  "isModule": true,
 }]
