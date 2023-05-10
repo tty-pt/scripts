@@ -8,8 +8,6 @@ const app = express();
 if (fs.existsSync("./src/setupProxy.js"))
   require(process.cwd() + "/src/setupProxy.js")(app);
 
-app.use(express.static(process.cwd() + "/public"));
-
 if (true) {
   const { webpack, makeConfig } = require("../webpack");
   const webpackHotMiddleware = require("webpack-hot-middleware");
@@ -34,6 +32,8 @@ if (true) {
 
   app.use(express.static(process.cwd() + "/dist"));
 }
+
+app.use(express.static(process.cwd() + "/public/static"));
 
 (package?.["@tty-pt/types"]?.serve || []).forEach(path => {
   app.use("/" + path, express.static(process.cwd() + "/" + path));

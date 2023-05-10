@@ -9,6 +9,10 @@ const pkg = require(process.cwd() + "/package.json");
 const scriptsPackage = require("./package.json");
 
 class IndexPlugin {
+  constructor(development) {
+    this.publicUrl = development ? "" : pkg.homepage;
+  }
+
   apply(compiler) {
     compiler.hooks.compilation.tap('IndexPlugin', compilation => {
       HtmlWebpackPlugin
@@ -16,7 +20,7 @@ class IndexPlugin {
         .afterTemplateExecution.tap('IndexPlugin', data => {
           data.html = data.html.replace(
             new RegExp('%PUBLIC_URL%', 'g'),
-            pkg.homepage
+            this.publicUrl
           );
         });
     });
@@ -133,13 +137,13 @@ module.exports = function makeConfig(env) {
           type: "asset",
         },
         {
-          test: /\.png/i,
+          test: /\.(png|svg)/i,
           use: ["file-loader"],
         },
-        {
-          test: /\.(svg|jpg|git)$/i,
-          use: ["@svgr/webpack"],
-        },
+        // {
+        //   test: /\.(svg|jpg|git)$/i,
+        //   use: ["@svgr/webpack"],
+        // },
       ],
     },
     resolveLoader: {
@@ -197,8 +201,8 @@ module.exports = function makeConfig(env) {
       outputModule: true,
     };
   } else {
-    config.plugins.push(new HtmlWebpackPlugin({ inject: false, template }));
-    config.plugins.push(new IndexPlugin());
+    config.plugins.push(new HtmlWebpackPlugin({ inject: true, template }));
+    config.plugins.push(new IndexPlugin(development));
 
     if (development) {
       config.entry.main = [
