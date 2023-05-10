@@ -5,15 +5,30 @@ const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin"
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
-const package = require(process.cwd() + "/package.json");
+const pkg = require(process.cwd() + "/package.json");
 const scriptsPackage = require("./package.json");
+
+class IndexPlugin {
+  apply(compiler) {
+    compiler.hooks.compilation.tap('IndexPlugin', compilation => {
+      HtmlWebpackPlugin
+        .getHooks(compilation)
+        .afterTemplateExecution.tap('IndexPlugin', data => {
+          data.html = data.html.replace(
+            new RegExp('%PUBLIC_URL%', 'g'),
+            pkg.homepage
+          );
+        });
+    });
+  }
+}
 
 const hasEslint = fs.existsSync(process.cwd() + "/.eslintrc.js");
 const { bias } = require("./bias.js");
 const swcConfigPath = bias(".swcrc");
 
 function libraryExternals() {
-  return Object.keys(package.peerDependencies ?? {})
+  return Object.keys(pkg.peerDependencies ?? {})
     .reduce((a, key) => ({
       ...a,
       [key]: key,
@@ -57,7 +72,7 @@ const defaultConfig = {
 
 const scriptsConfig = {
   ...defaultConfig,
-  ...(package?.["@tty-pt/scripts"] ?? {}),
+  ...(pkg?.["@tty-pt/scripts"] ?? {}),
 };
 
 const depModules = getDepModules();
@@ -71,7 +86,9 @@ module.exports = function makeConfig(env) {
     mode: "production",
     entry: stringEntry ? entry : { main: [entry] },
     output: {
-      filename: "[name]." + outputExtension,
+      filename: "static/js/[name]." + outputExtension,
+      chunkFilename: "static/js/[name].chunk.js",
+      assetModuleFilename: "static/media/[name].[hash][ext]",
       path: path.resolve(process.cwd(), "build"),
     },
     plugins: hasEslint ? [
@@ -168,7 +185,7 @@ module.exports = function makeConfig(env) {
     // config.externalsType = "module";
 
     config.output.library = {
-      name: package.name,
+      name: pkg.name,
       type: "umd",
     };
 
@@ -180,9 +197,8 @@ module.exports = function makeConfig(env) {
       outputModule: true,
     };
   } else {
-    config.plugins.push(
-      new HtmlWebpackPlugin({ template })
-    );
+    config.plugins.push(new HtmlWebpackPlugin({ inject: false, template }));
+    config.plugins.push(new IndexPlugin());
 
     if (development) {
       config.entry.main = [
