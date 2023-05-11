@@ -136,14 +136,18 @@ module.exports = function makeConfig(env) {
           test: /\.(eot|ttf|woff|woff2)$/i,
           type: "asset",
         },
+        // {
+        //   test: /\.(png|svg)/i,
+        //   use: ["file-loader"],
+        // },
         {
-          test: /\.(png|svg)/i,
+          test: /\.png/i,
           use: ["file-loader"],
         },
-        // {
-        //   test: /\.(svg|jpg|git)$/i,
-        //   use: ["@svgr/webpack"],
-        // },
+        {
+          test: /\.(svg|jpg|git)$/i,
+          use: ["@svgr/webpack"],
+        },
       ],
     },
     resolveLoader: {
