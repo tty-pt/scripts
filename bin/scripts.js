@@ -31,12 +31,10 @@ const scripts = {
 };
 
 const args = process.argv.slice(2);
-const scriptIndex = args.findIndex(x => scripts[x]);
-const scriptName = scriptIndex === -1 ? args[0] : args[scriptIndex];
+const scriptName = args[0];
 const script = scripts[scriptName];
-const nodeArgs = scriptIndex > 0 ? args.slice(0, scriptIndex) : [];
 
 if (!script)
   throw new Error("Unknown script " + scriptName);
 
-cexec(script, nodeArgs);
+cexec(script, args.slice(1));

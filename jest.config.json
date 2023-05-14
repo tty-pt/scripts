@@ -12,6 +12,7 @@
       "<rootDir>/node_modules/@tty-pt/scripts/fileMock.js",
     "\\.(css)$": "<rootDir>/node_modules/@tty-pt/scripts/fileMock.js"
   },
+  "testPathIgnorePatterns": ["dist"],
   "globals": {
     "window": {}
   }

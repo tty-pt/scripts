@@ -3,6 +3,7 @@
   "module": {
     "type": "commonjs"
   },
+  "exclude": "dist/*",
   "jsc": {
     "parser": {
       "syntax": "typescript",
