@@ -9,7 +9,7 @@
         "jsx": "react",
         "target": "es5",
         "allowJs": true,
-        "moduleResolution": "node",
+        "moduleResolution": "NodeNext",
         "allowSyntheticDefaultImports": true,
         "lib": [
             "es6",
