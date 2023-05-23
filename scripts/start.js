@@ -47,4 +47,7 @@ app.get("/*.js", (req, res) => {
   res.sendFile("./build/main.js", { root: "./" });
 });
 
-app.listen(port, () => console.log("Running on port " + port));
+const server = app.listen(port, () => console.log("Running on port " + port));
+
+if (fs.existsSync("./src/setupServer.js"))
+  require(process.cwd() + "/src/setupServer.js")(server);
