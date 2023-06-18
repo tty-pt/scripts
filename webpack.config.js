@@ -70,6 +70,7 @@ const defaultConfig = {
   entry: "./src/index.jsx",
   development: false,
   stringEntry: false,
+  parser: "swc",
   outputExtension: "js",
   template: "./public/index.html",
 };
@@ -103,7 +104,24 @@ module.exports = function makeConfig(env) {
       }),
     ] : [],
     module: {
-      rules: [
+      rules: (scriptsConfig.parser === "babel" ? [
+        {
+          test: /\.(js|jsx)$/i,
+          exclude: /node_modules/,
+          use: {
+            loader: "babel-loader",
+            options: {
+              presets: ["@babel/preset-env", "@babel/preset-react"].map(require.resolve),
+              plugins: [],
+            },
+          },
+        },
+        {
+          test: /\.(ts|tsx)$/i,
+          exclude: /node_modules/,
+          loader: "ts-loader",
+        },
+      ] : [
         {
           test: /\.(js|ts|tsx)$/i,
           exclude: /node_modules/,
@@ -128,6 +146,7 @@ module.exports = function makeConfig(env) {
             },
           },
         },
+      ]).concat([
         {
           test: /\.css$/i,
           use: ["style-loader", "css-loader"].map(require.resolve),
@@ -148,7 +167,7 @@ module.exports = function makeConfig(env) {
           test: /\.(svg|jpg|git)$/i,
           use: ["@svgr/webpack"],
         },
-      ],
+      ]),
     },
     resolveLoader: {
       modules: depModules,

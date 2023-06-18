@@ -21,6 +21,13 @@ else
 		npm init
 	fi
 
+	echo -n "Parser [swc]: "
+	read parser
+
+	if test "$parser" != "babel"; then
+		parser=swc
+	fi
+
 	echo -n "Use typescript? "
 	read y
 
@@ -30,7 +37,7 @@ else
 	pnpm add -D @tty-pt/scripts react@^$react_version react-dom@^$react_version
 fi
 
-jq ".scripts.start = \"scripts start\" | .scripts.build = \"scripts build\" | .scripts.watch = \"scripts watch\" | .scripts.lint = \"scripts lint\" | .scripts.test = \"scripts test\"" package.json >$temp
+jq "[@tty-pt/scripts] = { parser: \"$parser\" } | .scripts.start = \"scripts start\" | .scripts.build = \"scripts build\" | .scripts.watch = \"scripts watch\" | .scripts.lint = \"scripts lint\" | .scripts.test = \"scripts test\"" package.json >$temp
 mv $temp package.json
 
 pnpm start
