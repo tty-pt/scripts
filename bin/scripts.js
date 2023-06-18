@@ -13,9 +13,12 @@ function scriptCmd(path) {
 
 const scripts = {
   // dist: "swc --copy-files -d dist src",
-  build: (package["@tty-pt/scripts"]?.library
-    ? "swc --copy-files -d dist src"
-    : scriptCmd("build") // TODO why custom script now?
+  build: (package["@tty-pt/scripts"]?.parser === "babel"
+    ? scriptCmd("build")
+    : (package["@tty-pt/scripts"]?.library
+      ? "swc --copy-files -d dist src"
+      : scriptCmd("build") // TODO why custom script now?
+    )
   ),
   watch: "swc src --copy-files -w --out-dir dist",
   // "watch-dev": "nodemon --watch \"dist/**/*\" -e js ./dist/main.js",
