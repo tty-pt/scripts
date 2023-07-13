@@ -3,6 +3,7 @@
   "version": "0.1.4",
   "description": "Less than react-scripts",
   "main": "./index.js",
+  "type": "commonjs",
   "scripts": {
     "build": "echo @tty-pt/scripts skipping build",
     "test": "echo no tests"
