@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const package = require(process.cwd() + "/package.json");
+const pkg = require(process.cwd() + "/package.json");
 const { cexec } = require("../cexec");
 
 process.on("unhandledRejection", err => {
@@ -13,9 +13,9 @@ function scriptCmd(path) {
 
 const scripts = {
   // dist: "swc --copy-files -d dist src",
-  build: (package["@tty-pt/scripts"]?.parser === "babel"
+  build: (pkg.parser !== "swc"
     ? scriptCmd("build")
-    : (package["@tty-pt/scripts"]?.library
+    : (pkg["@tty-pt/scripts"]?.library
       ? "swc --copy-files -d dist src"
       : scriptCmd("build") // TODO why custom script now?
     )
@@ -26,7 +26,7 @@ const scripts = {
   run: "NODE_ENV=production node dist/main.js",
   "install-peers": scriptCmd("install-peers"),
   test: "node node_modules/@tty-pt/scripts/node_modules/jest/bin/jest.js",
-  lint: "eslint --format compact --ext .js,.jsx,.ts,.tsx src",
+  lint: "eslint --format compact --ext .js,.jsx,.ts,.tsx $@ src",
   init: __dirname + "/../scripts/init.sh",
   storybook: "node node_modules/@tty-pt/scripts/node_modules/storybook dev",
   "build-storyboook": "node node_modules/@tty-pt/scripts/node_modules/storybook build -s public",
@@ -35,7 +35,7 @@ const scripts = {
 
 const args = process.argv.slice(2);
 const scriptName = args[0];
-const script = scripts[scriptName];
+const script = scripts[scriptName].replace("$@", args.slice(1).join(" "));
 
 if (!script)
   throw new Error("Unknown script " + scriptName);

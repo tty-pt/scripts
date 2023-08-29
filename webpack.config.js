@@ -27,7 +27,7 @@ class IndexPlugin {
   }
 }
 
-const hasEslint = fs.existsSync(process.cwd() + "/.eslintrc.js");
+const hasEslint = fs.existsSync(process.cwd() + "/eslint.json");
 const { bias } = require("./bias.js");
 const swcConfigPath = bias(".swcrc");
 
@@ -67,12 +67,12 @@ function getDepModules() {
 const swcConfig = JSON.parse(fs.readFileSync(swcConfigPath, "utf-8"));
 
 const defaultConfig = {
-  entry: "./src/index.jsx",
-  development: false,
+  entry: pkg.entry ?? "./src/index.tsx",
+  development: true,
   stringEntry: false,
-  parser: "swc",
+  library: true,
   outputExtension: "js",
-  template: "./public/index.html",
+  template: pkg.template,
 };
 
 const scriptsConfig = {
@@ -86,16 +86,17 @@ module.exports = function makeConfig(env) {
   const { template, library, entry, stringEntry, outputExtension } = scriptsConfig;
 
   const development = env.development ?? scriptsConfig.development;
-  
+
   const config = {
     mode: "production",
-    entry: stringEntry ? entry : { main: [entry] },
+    entry: stringEntry ? entry : { main: entry },
     output: {
-      filename: "static/js/[name]." + outputExtension,
+      filename: pkg.main.replace("dist/", ""),
       chunkFilename: "static/js/[name].chunk.js",
       assetModuleFilename: "static/media/[name].[hash][ext]",
-      path: path.resolve(process.cwd(), "build"),
+      path: path.resolve(process.cwd() + "/dist"),
     },
+    target: "web",
     plugins: hasEslint ? [
       new ESLintPlugin({
         context: "./",
@@ -104,22 +105,22 @@ module.exports = function makeConfig(env) {
       }),
     ] : [],
     module: {
-      rules: (scriptsConfig.parser === "babel" ? [
+      rules: (scriptsConfig.parser !== "swc" ? [
+        {
+          test: /\.(ts|tsx)$/i,
+          exclude: /node_modules/,
+          loader: "ts-loader",
+        },
         {
           test: /\.(js|jsx)$/i,
           exclude: /node_modules/,
           use: {
             loader: "babel-loader",
             options: {
-              presets: ["@babel/preset-env", "@babel/preset-react"].map(require.resolve),
+              presets: [["@babel/preset-env", { targets: { esmodules: true } }], "@babel/preset-react", "@babel/preset-typescript"],
               plugins: [],
             },
           },
-        },
-        {
-          test: /\.(ts|tsx)$/i,
-          exclude: /node_modules/,
-          loader: "ts-loader",
         },
       ] : [
         {
@@ -211,10 +212,10 @@ module.exports = function makeConfig(env) {
     config.externalsType = "commonjs";
     // config.externalsType = "module";
 
-    config.output.library = {
-      name: pkg.name,
-      type: "umd",
-    };
+    config.output.library = pkg.name;
+    config.output.environment = { "const": true };
+
+    config.output.libraryTarget = "umd";
 
     config.plugins.push(
       new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 })
@@ -224,11 +225,11 @@ module.exports = function makeConfig(env) {
       outputModule: true,
     };
   } else {
-    config.plugins.push(new HtmlWebpackPlugin({ inject: true, template }));
+    template && config.plugins.push(new HtmlWebpackPlugin({ inject: true, template }));
     config.plugins.push(new IndexPlugin(development));
 
     if (development) {
-      config.entry.main = [
+      config.entry.main = library ? entry : [
         require.resolve("webpack-hot-middleware/client"),
         entry,
       ];
@@ -255,6 +256,11 @@ module.exports = function makeConfig(env) {
         new WorkboxWebpackPlugin.GenerateSW(),
       );
   }
+
+  // const config2 = { ...config, output: { ...config.output } };
+  // config2.output.libraryTarget = "commonjs2";
+  // config2.output.filename = pkg.module.replace("dist/", "");
+  // return [config, config2];
 
   return config;
 }
