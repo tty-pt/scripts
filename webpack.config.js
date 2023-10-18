@@ -72,6 +72,7 @@ const defaultConfig = {
   stringEntry: false,
   library: true,
   outputExtension: "js",
+  libraryTarget: "amd",
   template: pkg.template,
 };
 
@@ -212,10 +213,11 @@ module.exports = function makeConfig(env) {
     config.externalsType = "commonjs";
     // config.externalsType = "module";
 
-    config.output.library = pkg.name;
+    config.output.library = {
+      name: pkg.name,
+      type: scriptsConfig.libraryTarget,
+    }
     config.output.environment = { "const": true };
-
-    config.output.libraryTarget = "umd";
 
     config.plugins.push(
       new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 })
