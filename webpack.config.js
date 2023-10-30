@@ -48,14 +48,6 @@ function relsolve(pathName) {
   return path.resolve(process.cwd(), pathName);
 }
 
-// function _relsolve(pathName) {
-//   return path.resolve(__dirname, "../..", pathName);
-// }
-
-// function scrsolve(pathName) {
-//   return path.resolve(__dirname, "node_modules/@tty-pt/scripts/node_modules", pathName);
-// }
-
 function getDepModules() {
   return [
     "node_modules",
@@ -84,7 +76,7 @@ const scriptsConfig = {
 const depModules = getDepModules();
 
 module.exports = function makeConfig(env) {
-  const { template, library, entry, stringEntry, outputExtension } = scriptsConfig;
+  const { template, library, entry, stringEntry } = scriptsConfig;
 
   const development = env.development ?? scriptsConfig.development;
 
@@ -115,13 +107,7 @@ module.exports = function makeConfig(env) {
         {
           test: /\.(js|jsx)$/i,
           exclude: /node_modules/,
-          use: {
-            loader: "babel-loader",
-            options: {
-              presets: [["@babel/preset-env", { targets: { esmodules: true } }], "@babel/preset-react", "@babel/preset-typescript"],
-              plugins: [],
-            },
-          },
+          use: { loader: "babel-loader" },
         },
       ] : [
         {
@@ -157,10 +143,6 @@ module.exports = function makeConfig(env) {
           test: /\.(eot|ttf|woff|woff2)$/i,
           type: "asset",
         },
-        // {
-        //   test: /\.(png|svg)/i,
-        //   use: ["file-loader"],
-        // },
         {
           test: /\.png/i,
           use: ["file-loader"],
@@ -183,22 +165,8 @@ module.exports = function makeConfig(env) {
       alias: {
         react: relsolve('node_modules/react'),
         "react-dom": relsolve('node_modules/react-dom'),
-        // "@emotion/react": scrsolve('node_modules/@emotion/react'),
-        // "@emotion/react": relsolve('node_modules/@emotion/react/dist/emotion-react.browser.esm.js'),
-        // "@emotion/styled": relsolve('node_modules/@emotion/styled'),
-        // "@types/node": path.resolve(process.cwd() + 'node_modules/@types/node'),
-        // "@types/node": scrsolve('@types/node'),
-        // "@types/node": relsolve('node_modules/@types/node'),
-        // "@types/node": relsolve('node_modules/@types/node'),
-        // "@types/react": relsolve('node_modules/@types/react'),
-        // "@types/react-dom": relsolve('node_modules/@types/react-dom'),
-        // "@mov-ai/mov-fe-lib-core": relsolve('libs/core'),
-        // "@mov-ai/mov-fe-lib-react": relsolve('libs/mov-react'),
       },
       symlinks: true,
-      // vscode: require.resolve(
-      //   "@codingame/monaco-languageclient/lib/vscode-compatibility"
-      // ),
     },
     externals: {},
   };
@@ -210,8 +178,7 @@ module.exports = function makeConfig(env) {
 
   if (library) {
     config.externals = libraryExternals();
-    config.externalsType = "commonjs";
-    // config.externalsType = "module";
+    config.externalsType = "commonjs"; // or module?
 
     config.output.library = {
       name: pkg.name,

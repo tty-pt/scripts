@@ -1,6 +1,6 @@
 {
   "name": "@tty-pt/scripts",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "description": "Less than react-scripts",
   "main": "./index.js",
   "scripts": {
@@ -64,5 +64,8 @@
   },
   "bin": {
     "scripts": "./bin/scripts.js"
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-decorators": "^7.23.2"
   }
 }
