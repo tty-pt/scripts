@@ -5,6 +5,8 @@ const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin"
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
 const pkg = require(process.cwd() + "/package.json");
 const scriptsPackage = require("./package.json");
 
@@ -61,10 +63,8 @@ const swcConfig = JSON.parse(fs.readFileSync(swcConfigPath, "utf-8"));
 const defaultConfig = {
   entry: pkg.entry ?? "./src/index.tsx",
   development: true,
-  stringEntry: false,
-  library: true,
   outputExtension: "js",
-  libraryTarget: "amd",
+  targets: ["umd"],
   template: pkg.template,
 };
 
@@ -76,40 +76,33 @@ const scriptsConfig = {
 const depModules = getDepModules();
 
 module.exports = function makeConfig(env) {
-  const { template, library, entry, stringEntry } = scriptsConfig;
-
-  const development = env.development ?? scriptsConfig.development;
+  const { development = env.development, template, targets, entry } = pkg;
+  const splits = pkg.main.split("/");
+  const dist = splits[splits.length - 2];
+  const filename = splits[splits.length - 1];
 
   const config = {
     mode: "production",
-    entry: stringEntry ? entry : { main: entry },
+    entry: { main: entry },
     output: {
-      filename: pkg.main.replace("dist/", ""),
+      filename,
       chunkFilename: "static/js/[name].chunk.js",
       assetModuleFilename: "static/media/[name].[hash][ext]",
-      path: path.resolve(process.cwd() + "/dist"),
+      path: path.resolve(process.cwd() + "/" + dist),
+      globalObject: "this",
     },
     target: "web",
-    plugins: hasEslint ? [
+    plugins: [
+      new MiniCssExtractPlugin(),
+    ].concat(hasEslint ? [
       new ESLintPlugin({
         context: "./",
         eslintPath: require.resolve("eslint"),
         extensions: ["js", "jsx", "ts", "tsx"],
       }),
-    ] : [],
+    ] : []),
     module: {
-      rules: (scriptsConfig.parser !== "swc" ? [
-        {
-          test: /\.(ts|tsx)$/i,
-          exclude: /node_modules/,
-          loader: "ts-loader",
-        },
-        {
-          test: /\.(js|jsx)$/i,
-          exclude: /node_modules/,
-          use: { loader: "babel-loader" },
-        },
-      ] : [
+      rules: (pkg.parser === "swc" ? [
         {
           test: /\.(js|ts|tsx)$/i,
           exclude: /node_modules/,
@@ -134,10 +127,26 @@ module.exports = function makeConfig(env) {
             },
           },
         },
+      ] : [
+        {
+          test: /\.(ts|tsx)$/i,
+          exclude: /node_modules/,
+          loader: "ts-loader",
+        },
+        {
+          test: /\.(js|jsx)$/i,
+          exclude: /node_modules/,
+          loader: "babel-loader",
+        },
       ]).concat([
         {
-          test: /\.css$/i,
-          use: ["style-loader", "css-loader"].map(require.resolve),
+          test: /\.css/i,
+          use: [
+            {
+              loader: MiniCssExtractPlugin.loader,
+            },
+            "css-loader"
+          ],
         },
         {
           test: /\.(eot|ttf|woff|woff2)$/i,
@@ -169,6 +178,16 @@ module.exports = function makeConfig(env) {
       symlinks: true,
     },
     externals: {},
+    optimization: {
+      minimize: true,
+      minimizer: [
+        new TerserPlugin({
+          terserOptions: {
+            ecma: 6, // or higher depending on your source code
+          },
+        }),
+      ],
+    },
   };
 
   if (development) {
@@ -176,60 +195,99 @@ module.exports = function makeConfig(env) {
     config.devtool = "inline-source-map";
   }
 
-  if (library) {
-    config.externals = libraryExternals();
-    config.externalsType = "commonjs"; // or module?
+  if (typeof targets === "string")
+    targets = [targets];
 
-    config.output.library = {
-      name: pkg.name,
-      type: scriptsConfig.libraryTarget,
-    }
-    config.output.environment = { "const": true };
+  console.log("TARGETS", targets);
 
-    config.plugins.push(
-      new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 })
-    );
+  let configs = [];
 
-    config.experiments = {
-      outputModule: true,
-    };
-  } else {
-    template && config.plugins.push(new HtmlWebpackPlugin({ inject: true, template }));
-    config.plugins.push(new IndexPlugin(development));
+  function getFilename(field) {
+    const splits = field.split("/");
+    return splits[splits.length - 1];
 
-    if (development) {
-      config.entry.main = library ? entry : [
-        require.resolve("webpack-hot-middleware/client"),
-        entry,
-      ];
-      config.devtool = "inline-source-map";
-      config.devServer = {
-        open: true,
-        hot: true,
-        host: "localhost",
-      };
-
-      config.plugins.push(
-        new webpack.HotModuleReplacementPlugin()
-      );
-
-      config.plugins.push(
-        new ReactRefreshWebpackPlugin({
-          overlay: {
-            sockIntegration: "whm",
-          },
-        }),
-      );
-    } else
-      config.plugins.push(
-        new WorkboxWebpackPlugin.GenerateSW(),
-      );
   }
 
-  // const config2 = { ...config, output: { ...config.output } };
-  // config2.output.libraryTarget = "commonjs2";
-  // config2.output.filename = pkg.module.replace("dist/", "");
-  // return [config, config2];
+  for (const target of targets) {
+    console.log("TARGET", target);
+    const targetConfig = {
+      ...config,
+      plugins: [ ...config.plugins ],
+    };
 
-  return config;
+    if (template) {
+      targetConfig.plugins.push(new HtmlWebpackPlugin({ inject: true, template }));
+      targetConfig.plugins.push(new IndexPlugin(development));
+    }
+
+    if (pkg.externals) {
+      if (pkg.externals !== true)
+        targetConfig.externals = pkg.externals;
+      else
+        targetConfig.externals = libraryExternals();
+      targetConfig.externalsType = "commonjs"; // or module?
+    }
+
+    let name = pkg.main;
+
+    if (target === "app") {
+      targetConfig.output.filename = getFilename(pkg.main); 
+
+      if (development) {
+        targetConfig.entry.main = [
+          require.resolve("webpack-hot-middleware/client"),
+          name,
+        ];
+        targetConfig.devtool = "inline-source-map";
+        targetConfig.devServer = {
+          open: true,
+          hot: true,
+          host: "localhost",
+        };
+
+        targetConfig.plugins.push(
+          new webpack.HotModuleReplacementPlugin()
+        );
+
+        targetConfig.plugins.push(
+          new ReactRefreshWebpackPlugin({
+            overlay: {
+              sockIntegration: "whm",
+            },
+          }),
+        );
+      } else
+        targetConfig.plugins.push(
+          new WorkboxWebpackPlugin.GenerateSW(),
+        );
+    } else {
+      switch (target) {
+        case "amd":
+          name = pkg.amd;
+          targetConfig.externals = libraryExternals();
+          break;
+      }
+
+      targetConfig.output.filename = getFilename(name); 
+
+      targetConfig.output.library = {
+        name: targetConfig.output.filename,
+        type: target,
+      }
+
+      targetConfig.output.environment = { "const": true };
+
+      targetConfig.plugins.push(
+        new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 })
+      );
+
+      targetConfig.experiments = {
+        outputModule: true,
+      };
+    }
+
+    configs.push(targetConfig);
+  }
+
+  return configs;
 }
