@@ -5,6 +5,7 @@ const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin"
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const pkg = require(process.cwd() + "/package.json");
 const scriptsPackage = require("./package.json");
 
@@ -80,23 +81,29 @@ module.exports = function makeConfig(env) {
 
   const development = env.development ?? scriptsConfig.development;
 
+  const splits = pkg.main.split("/");
+  const dist = splits[splits.length - 2];
+  const filename = splits[splits.length - 1];
+
   const config = {
     mode: "production",
     entry: stringEntry ? entry : { main: entry },
     output: {
-      filename: pkg.main.replace("dist/", ""),
+      filename,
       chunkFilename: "static/js/[name].chunk.js",
       assetModuleFilename: "static/media/[name].[hash][ext]",
-      path: path.resolve(process.cwd() + "/dist"),
+      path: path.resolve(process.cwd() + "/" + dist),
     },
     target: "web",
-    plugins: hasEslint ? [
+    plugins: [
+      new MiniCssExtractPlugin(),
+    ].concat(hasEslint ? [
       new ESLintPlugin({
         context: "./",
         eslintPath: require.resolve("eslint"),
         extensions: ["js", "jsx", "ts", "tsx"],
       }),
-    ] : [],
+    ] : []),
     module: {
       rules: (scriptsConfig.parser !== "swc" ? [
         {
@@ -136,8 +143,13 @@ module.exports = function makeConfig(env) {
         },
       ]).concat([
         {
-          test: /\.css$/i,
-          use: ["style-loader", "css-loader"].map(require.resolve),
+          test: /\.css/i,
+          use: [
+            {
+              loader: MiniCssExtractPlugin.loader,
+            },
+            "css-loader"
+          ],
         },
         {
           test: /\.(eot|ttf|woff|woff2)$/i,
