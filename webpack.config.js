@@ -34,7 +34,7 @@ const { bias } = require("./bias.js");
 const swcConfigPath = bias(".swcrc");
 
 function libraryExternals() {
-  return Object.keys(pkg.peerDependencies ?? {})
+  return Object.keys(pkg.peerDependencies ?? {}).concat(Object.keys(pkg.optionalDependencies ?? {}))
     .reduce((a, key) => ({
       ...a,
       [key]: key,
@@ -60,23 +60,10 @@ function getDepModules() {
 
 const swcConfig = JSON.parse(fs.readFileSync(swcConfigPath, "utf-8"));
 
-const defaultConfig = {
-  entry: pkg.entry ?? "./src/index.tsx",
-  development: true,
-  outputExtension: "js",
-  targets: ["umd"],
-  template: pkg.template,
-};
-
-const scriptsConfig = {
-  ...defaultConfig,
-  ...(pkg?.["@tty-pt/scripts"] ?? {}),
-};
-
 const depModules = getDepModules();
 
 module.exports = function makeConfig(env) {
-  const { development = env.development, template, targets, entry } = pkg;
+  const { development = env.development, template, targets = ["umd"], entry } = pkg;
   const splits = pkg.main.split("/");
   const dist = splits[splits.length - 2];
   const filename = splits[splits.length - 1];
@@ -89,7 +76,9 @@ module.exports = function makeConfig(env) {
       chunkFilename: "static/js/[name].chunk.js",
       assetModuleFilename: "static/media/[name].[hash][ext]",
       path: path.resolve(process.cwd() + "/" + dist),
+      umdNamedDefine: true,
       globalObject: "this",
+      publicPath: "/node_modules/" + pkg.name + "/dist/",
     },
     target: "web",
     plugins: [
@@ -157,8 +146,13 @@ module.exports = function makeConfig(env) {
           use: ["file-loader"],
         },
         {
-          test: /\.(svg|jpg|git)$/i,
-          use: ["@svgr/webpack"],
+          test: /\.svg$/i,
+          // use: ["@svgr/webpack"],
+          use: ["file-loader"],
+        },
+        {
+          test: /\.jpg$/i,
+          use: ["file-loader"],
         },
       ]),
     },
@@ -198,8 +192,6 @@ module.exports = function makeConfig(env) {
   if (typeof targets === "string")
     targets = [targets];
 
-  console.log("TARGETS", targets);
-
   let configs = [];
 
   function getFilename(field) {
@@ -209,7 +201,6 @@ module.exports = function makeConfig(env) {
   }
 
   for (const target of targets) {
-    console.log("TARGET", target);
     const targetConfig = {
       ...config,
       plugins: [ ...config.plugins ],
@@ -220,18 +211,20 @@ module.exports = function makeConfig(env) {
       targetConfig.plugins.push(new IndexPlugin(development));
     }
 
-    if (pkg.externals) {
-      if (pkg.externals !== true)
-        targetConfig.externals = pkg.externals;
-      else
-        targetConfig.externals = libraryExternals();
-      targetConfig.externalsType = "commonjs"; // or module?
-    }
+    targetConfig.devtool = "source-map";
+    targetConfig.externalsType = "commonjs"; // or module?
 
     let name = pkg.main;
 
     if (target === "app") {
       targetConfig.output.filename = getFilename(pkg.main); 
+
+      if (pkg.externals) {
+        targetConfig.externals = pkg.externals === true || !pkg.externals ? libraryExternals() : {
+          ...pkg.externals,
+          ...(pkg.externals["$add"] ? libraryExternals() : {})
+        };
+      }
 
       if (development) {
         targetConfig.entry.main = [
@@ -262,29 +255,27 @@ module.exports = function makeConfig(env) {
         );
     } else {
       switch (target) {
-        case "amd":
-          name = pkg.amd;
-          targetConfig.externals = libraryExternals();
-          break;
+        case "amd": name = pkg.amd;
       }
+
+      targetConfig.externals = pkg.externals ? (pkg.externals["$add"] ? {
+        ...libraryExternals(),
+        ...pkg.externals,
+      } : pkg.externals) : libraryExternals();
 
       targetConfig.output.filename = getFilename(name); 
 
       targetConfig.output.library = {
-        name: targetConfig.output.filename,
+        name: pkg.name,
         type: target,
       }
 
+      targetConfig.output.libraryTarget = target;
+
       targetConfig.output.environment = { "const": true };
-
-      targetConfig.plugins.push(
-        new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 })
-      );
-
-      targetConfig.experiments = {
-        outputModule: true,
-      };
     }
+
+    console.log("EXTERNALS", Object.keys(targetConfig.externals).join(" "));
 
     configs.push(targetConfig);
   }

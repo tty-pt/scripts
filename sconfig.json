@@ -20,9 +20,11 @@
             "dom"
         ],
         "types": [
+		"node"
         ]
     },
     "exclude": [
+        "**/*.test.*",
 	"./dist/"
     ],
     "include": [
