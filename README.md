@@ -1,94 +1,110 @@
 # @tty-pt/scripts
 > Less than react scripts
 
-This library is similar to react-scripts (from create-react-app), in that it gives you default<br />
-configurations you can use to build, watch, test, storybook, lint and develop your projects.
+This library is similar to react-scripts, in that it gives you default configurations you can use to build, watch, test, storybook, lint and develop your projects.
 
-Unlike react-scripts, "@tty-pt/scripts" allows you to configure each of its constituent parts<br />
-via its respective configuration with a bit more ease, for example it is quite easy to customize you "webpack.config.js".
+However, in it there's an effort to make customization and configuration as simple and flexible as possible.
 
-Currently swc is used for compilation, which can be done in conjunction with packing.<br />
-But we are considering adding babel / typescript build types. Not guaranteed.
+For example, a lot of things can be customized via simple package.json properties, or we can even provide the original configuration files for each of its constituent parts. We can easily override webpack.config.js, and others, or we can make use of the defaults, or a mix of both. Without need for additional dependencies.
 
-# Scripts
+Additionally, it is faster than react-scripts. And it can save you having to specify all this devDependencies in your own projects. And from a lot of boilerplate.
 
-## Init
+As an example, I'm using pnpm as a package manager. But you can do the equivalent thing with npm.
+
+# Init Project or auto-add to existing project
 > Start new project / add to existing project
 ```sh
 pnpm dlx @tty-pt/scripts init # and follow the instructions
 ```
 
-## Build
-> Build project (usually production build)
-```sh
-pnpm build
-```
+# Other Scripts
+These are some of the common scripts we can run. Don't forget to have a corresponding "script" in your package.json, with the value set to "scripts \<script-name\>".
 
-## Start
-> Start project (development mode for apps)
-```sh
-pnpm start
-```
+## build
+> Build the project
 
-## Watch
-> Watch source files (useful for auto-building libraries)
-```sh
-pnpm watch
-```
+## start
+> Start the development server (for apps)
 
-## Lint
+## watch
+> Watch and auto-build (for libraries)
+
+## lint
 > Lint project
-```sh
-pnpm lint
-```
 
-## Test
+## test
 > Test project
-```sh
-pnpm test
-```
 
 ## storybook
 > Run storybook
-```sh
-pnpm storybook
-```
 
-# Configuration
-There is a new "@tty-pt/scripts" that you can add to package.json to configure scripts. Here's an example of that:
-```json
-	(...)
-	"name": "my-lib",
-	"main": "dist/index.js",
-	"@tty-pt/scripts": {
-		"entry": "src/index.js",
-		"development": true, # don't minify
-		"library": true
-	},
-	(...)
-```
-With this set up, you are good to try to use scripts.
+# Simple Configuration
+Configuration is meant to be as easy as possible. Without the need to dwelve into the complexities of the different tooling needed to build the project. It should, in most cases, be a matter of adding a couple of properties to package.json.
 
-In most situations it should be enough to symlink scripts' default configuration files.
+Some standard ones are also used to inform scripts about your project. Like "main" and others like it. Scripts knows how to build your projects to multiple module formats if you provide it with these kinds of properties.
+
+## entry
+This property specifies the entry point of your library or application. An example of it would be "./src/index.js".
+
+## template
+In case you are dealing with an application, or a library that also has an app, you can specify the "template" property. It lets you say which html template to use for the app.
+
+## library
+If you are building a library, you can use this property to specify its name. Meaning, the global object it may export to.
+
+You can also set this to "true", and it will use something akin to the package name. But in most cases, you shouldn't need to.
+
+## parser
+You can use this property to specify the transpiler. Some possible values are: "swc", "babel" or "esbuild". If a ".swcrc" is present, scripts will know to use swc, and you don't have to do this. Likewise if babel.config.js is present.
+
+## minimizer
+This property can be used to specify the minimizer. It can be "swc", "esbuild" or "terser". By default, "esbuild" is used.
+
+## publicUrl
+You can use this property to specify the publicUrl of your application in production mode.
+
+## development
+You can use this (with a value of "true")  so that scripts will build your thing in development mode, and not minify.
+
+## external
+This should be an object, in which each key is a library name, and the values are externals. You can specify these [the same way you'd specify externals in webpack](https://webpack.js.org/configuration/externals/#string).
+
+## resolve
+With this, you can specify an entry point for your externals. For example, react's umd entry point is usually "umd/react.production.min.js".
+
+This is also supposed to be an object in which keys are dependency names, and values are things like this.
+
+## cdn
+Set this to a string in the format: `https://cdn.skypack.dev/$NAME@$VERSION`. This will inform scripts where the resolved externals will be fetched from, so it can include the correct \<script\> reference.
+
+## copyUnresolved
+Set this to "true" to make sure that the externals that are not listed as resolving to a specific file don't use a cdn, and instead they are copied to the "build" or "dist" folder, so they can be served with the rest of your application.
+
+## serve
+This should be an array of strings, indicating which folders should be served by the development server.
+
+## stats
+Use this to output webpack stats to `/tmp/scripts.stats.json`.
+
+## outputConfig
+Set this to "true" to output the generated webpack configuration to `/tmp/scripts.webpack.config.json`.
+
+# Advanced Configuration
+In many situations, you don't have to do much. You can just set the package.json properties mentioned in the "Simple Configuration" section.
+
+However, if you wish to have more granular control, you can also provide your own configuration files. Or link those provided by scripts.
 
 ## webpack
-Webpack can be configured the usual way (via webpack.config.js).<br />
-But we provide a default configuration so that you can skip all that.
-
-Here's the simplest example of a valid webpack.config.js:
+If you wish to customize webpack, you can do something like:
 ```js
-module.exports = rquire("@tty-pt/scripts/webpack.config");
-```
-
-If you wish to customize webpack, you can do:
-```js
-const makeConfig = require("@tty-pt/scripts/webpack.config");
+const makeConfigs = require("@tty-pt/scripts/webpack.config");
 const CustomWebpackPlugin = require("./custom-webpack-plugin");
 
 module.exports = function (env) {
-	const config = makeConfig(env);
-	config.plugins.push(new CustomWebpackPlugin());
-	return config;
+	const configs = makeConfigs(env);
+	for (const config of configs)
+		config.plugins.push(new CustomWebpackPlugin());
+	return configs;
 };
 ```
 For example.
@@ -100,15 +116,21 @@ As stated, we're using swc under the hood, which can be configured using ".swcrc
 Jest can be configured via "jest.config.json".
 
 ## eslint
-Although nor the build nor the start scripts run eslint, you can still access it via "pnpm lint".<br />
-You should also have access to it in your editor.
-
-It can be configured using ".eslintrc.js".
+Can be configured using ".eslintrc.js".
 
 ## typescript
-Although typescript is not being used for compilation, we provide it so code editors may still make use of it.
-
 You can configure it via "tsconfig.json".
 
 ## express
 Express can be configured via "src/setupProxy.js".
+
+# Examples
+- [@tty-pt/ndc](https://github.com/tty-pt/ndc/blob/main/package.json)
+- [@tty-pt/styles](https://github.com/tty-pt/styles/blob/main/package.json)
+- [@tty-pt/types](https://github.com/tty-pt/types/blob/main/package.json)
+- [@tty-pt/sub](https://github.com/tty-pt/sub/blob/main/package.json)
+- [neverdark](https://github.com/quirinpa/neverdark/blob/main/package.json)
+- [@mov-ai/mov-fe-lib-core](https://github.com/MOV-AI/frontend-npm-lib-core/blob/dev/package.json)
+- [@mov-ai/mov-fe-lib-react](https://github.com/MOV-AI/frontend-npm-lib-react/blob/dev/package.json)
+- [@mov-ai/mov-fe-lib-code-editor](https://github.com/MOV-AI/frontend-npm-lib-code-editor/blob/dev/package.json)
+- [@mov-ai/mov-fe-lib-ide](https://github.com/MOV-AI/frontend-npm-lib-ide/blob/dev/package.json)

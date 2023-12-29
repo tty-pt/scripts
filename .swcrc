@@ -1,9 +1,5 @@
-[{
+{
   "$schema": "https://json.schemastore.org/swcrc",
-  "module": {
-    "type": "es6"
-  },
-  "exclude": "dist/*",
   "jsc": {
     "parser": {
       "syntax": "typescript",
@@ -27,32 +23,4 @@
   },
   "minify": false,
   "isModule": true
-}, {
-  "$schema": "https://json.schemastore.org/swcrc",
-  "module": {
-    "type": "es6"
-  },
-  "jsc": {
-    "parser": {
-      "syntax": "ecmascript",
-      "jsx": true,
-      "dynamicImport": false,
-      "privateMethod": false,
-      "functionBind": false,
-      "exportDefaultFrom": false,
-      "exportNamespaceFrom": false,
-      "decorators": false,
-      "decoratorsBeforeExport": false,
-      "topLevelAwait": false,
-      "importMeta": false,
-      "emotion": true
-    },
-    "transform": null,
-    "target": "es2019",
-    "loose": false,
-    "externalHelpers": false,
-    "keepClassNames": false
-  },
-  "minify": false,
-  "isModule": true
-}]
+}

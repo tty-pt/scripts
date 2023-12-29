@@ -3,16 +3,22 @@
   "transform": {
      "\\.(js|jsx|ts|tsx)$": "@swc/jest"
   },
+  "setupFiles": ["<rootDir>/jest.setup.js"],
+  "rootDir": "./../../..",
   "transformIgnorePatterns": [
-    "<rootDir>/node_modules/(?!(@tty-pt/styles|jest-)?)",
-    "<rootDir>/node_modules/@babel/core"
+    "jest.setup.js"
   ],
   "moduleNameMapper": {
-    "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
+    "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga|css)$":
       "<rootDir>/node_modules/@tty-pt/scripts/fileMock.js",
-    "\\.(css)$": "<rootDir>/node_modules/@tty-pt/scripts/fileMock.js"
+    "@fontsource/.+": "<rootDir>/node_modules/@tty-pt/scripts/fileMock.js"
   },
-  "testPathIgnorePatterns": ["dist"],
+  "testMatch": [
+    "<rootDir>/src/**/*.test.js",
+    "<rootDir>/src/**/*.test.jsx",
+    "<rootDir>/src/**/*.test.ts",
+    "<rootDir>/src/**/*.test.tsx"
+  ],
   "globals": {
     "window": {}
   }

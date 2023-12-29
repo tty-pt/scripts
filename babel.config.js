@@ -4,13 +4,13 @@ module.exports = {
       "@babel/preset-env",
       {
         targets: {
-          chrome: "78",
-          node: "12",
-          esmodules: true
-        }
+          "browsers": ["last 2 Chrome versions", "last 2 Firefox versions"],
+          "node": "20"
+        },
+        exclude: ["transform-block-scoping"]
       }
     ],
-    // "@babel/preset-typescript",
+    "@babel/preset-typescript",
     "@babel/preset-react"
   ],
   plugins: [
@@ -21,7 +21,7 @@ module.exports = {
     ["@babel/plugin-transform-class-properties", { loose: true }],
     [
       "@babel/plugin-transform-runtime",
-      { useESModules: true, helpers: true }
+      { useESModules: false, helpers: true }
     ]
   ]
 };
