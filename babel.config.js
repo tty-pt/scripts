@@ -1,13 +1,15 @@
 module.exports = {
+  ignore: ["./node_modules"],
+  exclude: ["./node_modules"],
   presets: [
     [
       "@babel/preset-env",
       {
         targets: {
-          chrome: "78",
-          node: "12",
-          esmodules: true
-        }
+          "browsers": ["last 2 Chrome versions", "last 2 Firefox versions"],
+          "node": "20"
+        },
+        exclude: ["transform-block-scoping"]
       }
     ],
     // "@babel/preset-typescript",

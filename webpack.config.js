@@ -7,12 +7,15 @@ const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+// const ImportMapWebpackPlugin = require('webpack-import-map-plugin');
+// const WebpackManifestPlugin = require('webpack-manifest-plugin').WebpackManifestPlugin;
+// const ESBuildPlugin = require('esbuild-webpack-plugin').default;
 const pkg = require(process.cwd() + "/package.json");
 const scriptsPackage = require("./package.json");
 
 class IndexPlugin {
   constructor(development) {
-    this.publicUrl = development ? "" : pkg.homepage;
+    this.publicUrl = development ? "" : (pkg.publicUrl ?? "");
   }
 
   apply(compiler) {
@@ -30,8 +33,23 @@ class IndexPlugin {
 }
 
 const hasEslint = fs.existsSync(process.cwd() + "/eslint.json");
-const { bias } = require("./bias.js");
-const swcConfigPath = bias(".swcrc");
+const hasBabelConfig = fs.existsSync(process.cwd() + "/babel.config.js");
+const swcRcPath = process.cwd() + "/.swcrc";
+const hasSwcRc = fs.existsSync(swcRcPath);
+const swcConfig = hasSwcRc ? JSON.parse(fs.readFileSync(swcRcPath, "utf-8")) : null;
+
+let dot = {};
+const dotPath = process.cwd() + "/.config";
+if (fs.existsSync(dotPath)) {
+  const configFileContent = fs.readFileSync(dotPath, 'utf8');
+  dot = configFileContent.split('\n').reduce((acc, line) => {
+    const [key, value] = line.split('=');
+    if (!key)
+      return acc;
+    acc[key] = value;
+    return acc;
+  }, {});
+}
 
 function libraryExternals() {
   return Object.keys(pkg.peerDependencies ?? {}).concat(Object.keys(pkg.optionalDependencies ?? {}))
@@ -46,10 +64,6 @@ function depModule(dep) {
   return thisPath.substring(0, thisPath.lastIndexOf(dep) - 1);
 }
 
-function relsolve(pathName) {
-  return path.resolve(process.cwd(), pathName);
-}
-
 function getDepModules() {
   return [
     "node_modules",
@@ -58,13 +72,35 @@ function getDepModules() {
   ].concat(Object.keys(scriptsPackage.dependencies).map(depModule));
 }
 
-const swcConfig = JSON.parse(fs.readFileSync(swcConfigPath, "utf-8"));
-
 const depModules = getDepModules();
+const origBabelConfig = require("./babel.config");
+
+function getBabelConfig(module) {
+  const presetEnvConf = origBabelConfig.presets[0][1];
+  return hasBabelConfig ? undefined : {
+    ...origBabelConfig,
+    presets: [
+      [ "@babel/preset-env", { ...presetEnvConf, modules: module ? false : "commonjs" } ],
+      origBabelConfig.presets.slice(1)
+    ],
+  };
+}
 
 module.exports = function makeConfig(env) {
-  const { development = env.development, template, targets = ["umd"], entry } = pkg;
-  const splits = pkg.main.split("/");
+  const {
+    development = env.development,
+    entry = "./src/index.jsx",
+    module,
+    publicPath = "/",
+  } = pkg;
+  let { targets, main, template } = pkg;
+
+  if (!main) {
+    template = "./index.html";
+    main = "./dist/index.js";
+  }
+
+  const splits = main.split("/");
   const dist = splits[splits.length - 2];
   const filename = splits[splits.length - 1];
 
@@ -77,12 +113,25 @@ module.exports = function makeConfig(env) {
       assetModuleFilename: "static/media/[name].[hash][ext]",
       path: path.resolve(process.cwd() + "/" + dist),
       umdNamedDefine: true,
-      globalObject: "this",
-      publicPath: "/node_modules/" + pkg.name + "/dist/",
+      globalObject: "globalThis",
+      publicPath: development ? "/" : publicPath,
+      // module: true,
+      // environment: { module: true },
     },
     target: "web",
     plugins: [
       new MiniCssExtractPlugin(),
+      new webpack.DefinePlugin({
+        "process.env": JSON.stringify(dot)
+      }),
+      function() {
+        this.hooks.done.tap('DonePlugin', (stats) => {
+          fs.writeFileSync(
+            path.resolve(process.cwd() + '/stats.json'),
+            JSON.stringify(stats.toJson())
+          );
+        });
+      }
     ].concat(hasEslint ? [
       new ESLintPlugin({
         context: "./",
@@ -91,26 +140,14 @@ module.exports = function makeConfig(env) {
       }),
     ] : []),
     module: {
-      rules: (pkg.parser === "swc" ? [
+      rules: (hasSwcRc ? [
         {
-          test: /\.(js|ts|tsx)$/i,
+          test: /\.(js|ts|tsx|jsx)$/i,
           exclude: /node_modules/,
           use: {
             loader: require.resolve("swc-loader"),
             options: {
-              ...swcConfig[0],
-              sourceMaps: development,
-              minify: !development,
-            },
-          },
-        },
-        {
-          test: /\.jsx$/i,
-          exclude: /node_modules/,
-          use: {
-            loader: require.resolve("swc-loader"),
-            options: {
-              ...swcConfig[1],
+              ...swcConfig,
               sourceMaps: development,
               minify: !development,
             },
@@ -118,14 +155,15 @@ module.exports = function makeConfig(env) {
         },
       ] : [
         {
-          test: /\.(ts|tsx)$/i,
-          exclude: /node_modules/,
-          loader: "ts-loader",
-        },
-        {
           test: /\.(js|jsx)$/i,
           exclude: /node_modules/,
           loader: "babel-loader",
+          options: getBabelConfig(module),
+        },
+        {
+          test: /\.(ts|tsx)$/i,
+          exclude: /node_modules/,
+          loader: "ts-loader",
         },
       ]).concat([
         {
@@ -138,21 +176,18 @@ module.exports = function makeConfig(env) {
           ],
         },
         {
-          test: /\.(eot|ttf|woff|woff2)$/i,
+          test: /\.(eot|ttf|woff|woff2|svg|png|jpg)$/i,
           type: "asset",
         },
         {
-          test: /\.png/i,
-          use: ["file-loader"],
+          test: /\.json$/,
+          loader: 'json-loader',
+          type: 'javascript/auto',
+          options: { charset: 'utf-8' },
         },
         {
-          test: /\.svg$/i,
-          // use: ["@svgr/webpack"],
-          use: ["file-loader"],
-        },
-        {
-          test: /\.jpg$/i,
-          use: ["file-loader"],
+          test: /\.html$/,
+          loader: 'html-loader'
         },
       ]),
     },
@@ -162,24 +197,30 @@ module.exports = function makeConfig(env) {
       mainFields: ['loader', 'main'],
       symlinks: true,
     },
+    experiments: {},
+    externalsType: "umd",
+    devtool: "source-map",
+    // experiments: {
+    //   type: "module",
+    //   outputModule: true,
+    // },
     resolve: {
       modules: depModules,
       extensions: [".js", ".jsx", ".ts", ".tsx"],
-      alias: {
-        react: relsolve('node_modules/react'),
-        "react-dom": relsolve('node_modules/react-dom'),
-      },
       symlinks: true,
+      enforceExtension: false,
     },
     externals: {},
     optimization: {
-      minimize: true,
+      minimize: !development,
+      usedExports: false,
       minimizer: [
         new TerserPlugin({
           terserOptions: {
             ecma: 6, // or higher depending on your source code
           },
         }),
+        // new ESBuildPlugin(),
       ],
     },
   };
@@ -189,53 +230,80 @@ module.exports = function makeConfig(env) {
     config.devtool = "inline-source-map";
   }
 
-  if (typeof targets === "string")
-    targets = [targets];
-
-  let configs = [];
-
   function getFilename(field) {
     const splits = field.split("/");
     return splits[splits.length - 1];
 
   }
 
+  config.externals = pkg.externals ? (pkg.externals["$add"] ? {
+    ...libraryExternals(),
+    ...pkg.externals,
+  } : pkg.externals) : libraryExternals();
+
+  if (!targets) {
+    targets = ["umd"];
+    if (pkg.module)
+      targets.push("module");
+  }
+
+  let configs = [];
+
   for (const target of targets) {
+    let lname = main;
+
     const targetConfig = {
       ...config,
+      experiments: { ...config.experiments },
+      output: { ...config.output },
       plugins: [ ...config.plugins ],
     };
 
-    if (template) {
-      targetConfig.plugins.push(new HtmlWebpackPlugin({ inject: true, template }));
-      targetConfig.plugins.push(new IndexPlugin(development));
+    switch (target) {
+      case "amd": lname = pkg.amd; break;
+      case "module":
+        lname = pkg.module;
+        targetConfig.externalsType = "module";
+        targetConfig.experiments.outputModule = true;
+        break;
     }
 
-    targetConfig.devtool = "source-map";
-    targetConfig.externalsType = "commonjs"; // or module?
+    targetConfig.output.filename = getFilename(lname); 
 
-    let name = pkg.main;
+    targetConfig.output.library = {
+      ...(target === "module" ? {} : {
+        name: pkg.name,
+      }),
+      type: target,
+    }
 
-    if (target === "app") {
-      targetConfig.output.filename = getFilename(pkg.main); 
+    targetConfig.output.libraryTarget = target;
+    targetConfig.output.environment = { "const": true };
 
-      if (pkg.externals) {
-        targetConfig.externals = pkg.externals === true || !pkg.externals ? libraryExternals() : {
-          ...pkg.externals,
-          ...(pkg.externals["$add"] ? libraryExternals() : {})
-        };
-      }
+    if (template) {
+      // targetConfig.externalsType = "var";
+      targetConfig.plugins.push(new HtmlWebpackPlugin({
+        inject: true,
+        template,
+        // scriptLoading: "module",
+        // importMap: JSON.stringify(require(process.cwd() + "/import.json")),
+      }));
+      targetConfig.plugins.push(new IndexPlugin(development));
+      // targetConfig.plugins.push(new WebpackManifestPlugin({
+      //   writeToFileEmit: true,
+      // }));
 
       if (development) {
         targetConfig.entry.main = [
           require.resolve("webpack-hot-middleware/client"),
-          name,
+          entry,
         ];
         targetConfig.devtool = "inline-source-map";
         targetConfig.devServer = {
           open: true,
           hot: true,
           host: "localhost",
+          historyApiFallback: true,
         };
 
         targetConfig.plugins.push(
@@ -253,29 +321,7 @@ module.exports = function makeConfig(env) {
         targetConfig.plugins.push(
           new WorkboxWebpackPlugin.GenerateSW(),
         );
-    } else {
-      switch (target) {
-        case "amd": name = pkg.amd;
-      }
-
-      targetConfig.externals = pkg.externals ? (pkg.externals["$add"] ? {
-        ...libraryExternals(),
-        ...pkg.externals,
-      } : pkg.externals) : libraryExternals();
-
-      targetConfig.output.filename = getFilename(name); 
-
-      targetConfig.output.library = {
-        name: pkg.name,
-        type: target,
-      }
-
-      targetConfig.output.libraryTarget = target;
-
-      targetConfig.output.environment = { "const": true };
     }
-
-    console.log("EXTERNALS", Object.keys(targetConfig.externals).join(" "));
 
     configs.push(targetConfig);
   }

@@ -13,7 +13,7 @@ if (true) {
   const webpackHotMiddleware = require("webpack-hot-middleware");
   const webpackDevMiddleware = require("webpack-dev-middleware");
 
-  const config = makeConfig({ development: true });
+  const [config] = makeConfig({ development: true });
 
   const compiler = webpack(config);
 
@@ -35,13 +35,15 @@ if (true) {
 
 app.use(express.static(process.cwd() + "/public/static"));
 
-(package?.["@tty-pt/types"]?.serve || []).forEach(path => {
+(package?.serve || []).forEach(path => {
   app.use("/" + path, express.static(process.cwd() + "/" + path));
 });
 
-app.get("/*.html", (req, res) => {
-  res.sendFile("/index.html", { root: "./" });
-});
+app.use("/node_modules", express.static(process.cwd() + "/node_modules"));
+
+// app.get("/*.html", (req, res) => {
+//   res.sendFile("/index.html", { root: "./" });
+// });
 
 app.get("/*.js", (req, res) => {
   res.sendFile("./build/main.js", { root: "./" });
