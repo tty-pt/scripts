@@ -7,6 +7,9 @@ const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+// const ImportMapWebpackPlugin = require('webpack-import-map-plugin');
+// const WebpackManifestPlugin = require('webpack-manifest-plugin').WebpackManifestPlugin;
+// const ESBuildPlugin = require('esbuild-webpack-plugin').default;
 const pkg = require(process.cwd() + "/package.json");
 const scriptsPackage = require("./package.json");
 
@@ -63,7 +66,8 @@ const swcConfig = JSON.parse(fs.readFileSync(swcConfigPath, "utf-8"));
 const depModules = getDepModules();
 
 module.exports = function makeConfig(env) {
-  const { development = env.development, template, targets = ["umd"], entry } = pkg;
+  const { development = env.development, template, entry } = pkg;
+  let { targets } = pkg;
   const splits = pkg.main.split("/");
   const dist = splits[splits.length - 2];
   const filename = splits[splits.length - 1];
@@ -77,8 +81,11 @@ module.exports = function makeConfig(env) {
       assetModuleFilename: "static/media/[name].[hash][ext]",
       path: path.resolve(process.cwd() + "/" + dist),
       umdNamedDefine: true,
-      globalObject: "this",
+      globalObject: "globalThis",
       publicPath: "/node_modules/" + pkg.name + "/dist/",
+      publicPath: "/",
+      // module: true,
+      // environment: { module: true },
     },
     target: "web",
     plugins: [
@@ -142,17 +149,18 @@ module.exports = function makeConfig(env) {
           type: "asset",
         },
         {
-          test: /\.png/i,
+          test: /\.(png|svg|jpg)$/i,
           use: ["file-loader"],
         },
         {
-          test: /\.svg$/i,
-          // use: ["@svgr/webpack"],
-          use: ["file-loader"],
+          test: /\.json$/,
+          loader: 'json-loader',
+          type: 'javascript/auto',
+          options: { charset: 'utf-8' },
         },
         {
-          test: /\.jpg$/i,
-          use: ["file-loader"],
+          test: /\.html$/,
+          loader: 'html-loader'
         },
       ]),
     },
@@ -162,24 +170,38 @@ module.exports = function makeConfig(env) {
       mainFields: ['loader', 'main'],
       symlinks: true,
     },
+    experiments: {},
+    externalsType: "umd",
+    devtool: "source-map",
+    // experiments: {
+    //   type: "module",
+    //   // outputModule: true,
+    // },
     resolve: {
       modules: depModules,
       extensions: [".js", ".jsx", ".ts", ".tsx"],
-      alias: {
-        react: relsolve('node_modules/react'),
-        "react-dom": relsolve('node_modules/react-dom'),
-      },
+      // alias: Object.keys(pkg.dependencies).reduce(
+      //   (a, key) => ({ ...a, [key]: process.cwd() + "/node_modules/" + key }),
+      //   {}
+      // ),
+      // alias: Object.keys(pkg.dependencies).reduce(
+      //   (a, key) => ({ ...a, [key]: "./mod/" + key }),
+      //   {}
+      // ),
       symlinks: true,
+      enforceExtension: false,
     },
     externals: {},
     optimization: {
-      minimize: true,
+      minimize: !development,
+      usedExports: false,
       minimizer: [
         new TerserPlugin({
           terserOptions: {
             ecma: 6, // or higher depending on your source code
           },
         }),
+        // new ESBuildPlugin(),
       ],
     },
   };
@@ -189,10 +211,7 @@ module.exports = function makeConfig(env) {
     config.devtool = "inline-source-map";
   }
 
-  if (typeof targets === "string")
-    targets = [targets];
-
-  let configs = [];
+  let name = pkg.main;
 
   function getFilename(field) {
     const splits = field.split("/");
@@ -200,42 +219,74 @@ module.exports = function makeConfig(env) {
 
   }
 
+  config.externals = pkg.externals ? (pkg.externals["$add"] ? {
+    ...libraryExternals(),
+    ...pkg.externals,
+  } : pkg.externals) : libraryExternals();
+
+  if (!targets) {
+    targets = ["umd"];
+    if (pkg.module)
+      targets.push("module");
+  }
+
+  let configs = [];
+
   for (const target of targets) {
+    let lname = pkg.main;
+
     const targetConfig = {
       ...config,
+      experiments: { ...config.experiments },
+      output: { ...config.output },
       plugins: [ ...config.plugins ],
     };
 
-    if (template) {
-      targetConfig.plugins.push(new HtmlWebpackPlugin({ inject: true, template }));
-      targetConfig.plugins.push(new IndexPlugin(development));
+    switch (target) {
+      case "amd": lname = pkg.amd; break;
+      case "module":
+        lname = pkg.module;
+        targetConfig.externalsType = "module";
+        targetConfig.experiments.outputModule = true;
+        break;
     }
 
-    targetConfig.devtool = "source-map";
-    targetConfig.externalsType = "commonjs"; // or module?
+    targetConfig.output.filename = getFilename(lname); 
 
-    let name = pkg.main;
+    targetConfig.output.library = {
+      ...(target === "module" ? {} : {
+        name: pkg.name,
+      }),
+      type: target,
+    }
 
-    if (target === "app") {
-      targetConfig.output.filename = getFilename(pkg.main); 
+    targetConfig.output.libraryTarget = target;
+    targetConfig.output.environment = { "const": true };
 
-      if (pkg.externals) {
-        targetConfig.externals = pkg.externals === true || !pkg.externals ? libraryExternals() : {
-          ...pkg.externals,
-          ...(pkg.externals["$add"] ? libraryExternals() : {})
-        };
-      }
+    if (template) {
+      targetConfig.externalsType = "var";
+      targetConfig.plugins.push(new HtmlWebpackPlugin({
+        inject: true,
+        template,
+        // scriptLoading: "module",
+        // importMap: JSON.stringify(require(process.cwd() + "/import.json")),
+      }));
+      targetConfig.plugins.push(new IndexPlugin(development));
+      // targetConfig.plugins.push(new WebpackManifestPlugin({
+      //   writeToFileEmit: true,
+      // }));
 
       if (development) {
         targetConfig.entry.main = [
           require.resolve("webpack-hot-middleware/client"),
-          name,
+          entry,
         ];
         targetConfig.devtool = "inline-source-map";
         targetConfig.devServer = {
           open: true,
           hot: true,
           host: "localhost",
+          historyApiFallback: true,
         };
 
         targetConfig.plugins.push(
@@ -253,29 +304,7 @@ module.exports = function makeConfig(env) {
         targetConfig.plugins.push(
           new WorkboxWebpackPlugin.GenerateSW(),
         );
-    } else {
-      switch (target) {
-        case "amd": name = pkg.amd;
-      }
-
-      targetConfig.externals = pkg.externals ? (pkg.externals["$add"] ? {
-        ...libraryExternals(),
-        ...pkg.externals,
-      } : pkg.externals) : libraryExternals();
-
-      targetConfig.output.filename = getFilename(name); 
-
-      targetConfig.output.library = {
-        name: pkg.name,
-        type: target,
-      }
-
-      targetConfig.output.libraryTarget = target;
-
-      targetConfig.output.environment = { "const": true };
     }
-
-    console.log("EXTERNALS", Object.keys(targetConfig.externals).join(" "));
 
     configs.push(targetConfig);
   }

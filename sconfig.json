@@ -8,7 +8,7 @@
         "module": "ESNext",
 	"declaration": true,
         "jsx": "react",
-        "target": "esnext",
+        "target": "es5",
         "allowJs": true,
 	"esModuleInterop": true,
         "moduleResolution": "node",
@@ -26,11 +26,16 @@
     },
     "exclude": [
         "**/*.test.*",
-	"./dist/"
+	"./dist/",
+	"./htdocs/"
     ],
     "include": [
         "./src/",
         "./lib/"
     ],
-    "transform": {}
+    "transform": {},
+    "ts-node": {
+	    "esm": true,
+	    "experimentalSpecifierResolution": "node"
+    }
 }

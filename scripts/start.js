@@ -35,9 +35,11 @@ if (true) {
 
 app.use(express.static(process.cwd() + "/public/static"));
 
-(package?.["@tty-pt/types"]?.serve || []).forEach(path => {
+(package?.serve || []).forEach(path => {
   app.use("/" + path, express.static(process.cwd() + "/" + path));
 });
+
+app.use("/node_modules", express.static(process.cwd() + "/node_modules"));
 
 app.get("/*.html", (req, res) => {
   res.sendFile("/index.html", { root: "./" });
