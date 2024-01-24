@@ -1,6 +1,7 @@
 module.exports = {
   ignore: ["./node_modules"],
   exclude: ["./node_modules"],
+  only: ["./src"],
   presets: [
     [
       "@babel/preset-env",
@@ -12,7 +13,7 @@ module.exports = {
         exclude: ["transform-block-scoping"]
       }
     ],
-    // "@babel/preset-typescript",
+    "@babel/preset-typescript",
     "@babel/preset-react"
   ],
   plugins: [
@@ -23,7 +24,7 @@ module.exports = {
     ["@babel/plugin-transform-class-properties", { loose: true }],
     [
       "@babel/plugin-transform-runtime",
-      { useESModules: true, helpers: true }
+      { useESModules: false, helpers: true }
     ]
   ]
 };

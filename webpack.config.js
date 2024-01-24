@@ -1,7 +1,7 @@
 const path = require("path");
 const fs = require("fs");
 const webpack = require("webpack");
-const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
+// const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
@@ -36,7 +36,9 @@ const hasEslint = fs.existsSync(process.cwd() + "/eslint.json");
 const hasBabelConfig = fs.existsSync(process.cwd() + "/babel.config.js");
 const swcRcPath = process.cwd() + "/.swcrc";
 const hasSwcRc = fs.existsSync(swcRcPath);
-const swcConfig = hasSwcRc ? JSON.parse(fs.readFileSync(swcRcPath, "utf-8")) : null;
+const swcConfig = hasSwcRc
+  ? JSON.parse(fs.readFileSync(swcRcPath, "utf-8"))
+  : JSON.parse(fs.readFileSync(__dirname + "/.swcrc", "utf-8"));
 
 let dot = {};
 const dotPath = process.cwd() + "/.config";
@@ -68,32 +70,109 @@ function getDepModules() {
   return [
     "node_modules",
     "node_modules/@tty-pt/scripts/node_modules",
+    "../../libs",
     "src"
   ].concat(Object.keys(scriptsPackage.dependencies).map(depModule));
 }
 
 const depModules = getDepModules();
 const origBabelConfig = require("./babel.config");
+const lastEl = process.cwd().split("/").splice(-1)[0];
+const regexStr = `^${path.resolve(process.cwd() + "/../../libs")}/(?!${lastEl})`;
+const otherRegexStr = `^../../libs/(?!${lastEl})`;
+console.log("REG", regexStr);
+// const libsRegex = new RegExp(regexStr);
+const excludeArr = [new RegExp(regexStr), new RegExp(otherRegexStr)];
+// This is not ideal. If I'm building a library in this path, it wouldn't work.
 
-function getBabelConfig(module) {
+function getParserConfig(module, parser) {
+  if (parser === "swc") return {
+    ...swcConfig,
+    module: {
+      ...swcConfig.module,
+      type: module ? "es6" : "commonjs",
+    }
+  };
+
   const presetEnvConf = origBabelConfig.presets[0][1];
+  const runtimePluginConf = origBabelConfig.plugins[origBabelConfig.plugins.length - 1][1];
+  console.log("MODULE", module, regexStr, otherRegexStr, process.cwd());
+  const ignoreArr = origBabelConfig.ignore.concat(excludeArr);
   return hasBabelConfig ? undefined : {
     ...origBabelConfig,
+    ignore: ignoreArr,
+    exclude: ignoreArr,
     presets: [
-      [ "@babel/preset-env", { ...presetEnvConf, modules: module ? false : "commonjs" } ],
-      origBabelConfig.presets.slice(1)
-    ],
+      [ "@babel/preset-env", { ...presetEnvConf, modules: module ? "auto" : "commonjs" } ],
+    ].concat(origBabelConfig.presets.slice(1)),
+    plugins: [
+      ...origBabelConfig.plugins.slice(0, origBabelConfig.plugins.length - 2),
+      [
+        "@babel/plugin-transform-runtime", {
+          ...runtimePluginConf,
+          useESModules: module,
+        }
+      ]
+    ]
   };
+}
+
+function getCodeRules(module, parser) {
+  return parser === "swc" ? [{
+    test: /\.(js|ts|tsx|jsx)$/i,
+    exclude: excludeArr.concat([/node_modules/]),
+    use: {
+      loader: require.resolve("swc-loader"),
+      options: {
+        ...getParserConfig(module, "swc"),
+        sourceMaps: development,
+        minify: !development,
+      },
+    },
+  }] : [{
+    test: /\.(ts|tsx|js|jsx)$/i,
+    include: /src/,
+    exclude: excludeArr.concat([/node_modules/]),
+    // exclude: [/node_modules/, path.resolve(process.cwd(), "../../libs")],
+    // exclude: [/node_modules/, (modulePath) => {
+    //   const realPath = fs.realpathSync(modulePath);
+    //   return realPath.includes(path.resolve(process.cwd(), '../../libs'));
+    // }],
+    // exclude: (modulePath) => {
+    //   console.log("modulePath", modulePath, path.resolve(process.cwd(), '../../libs'));
+    //   if (modulePath.includes('/node_modules/')) {
+    //     return true;
+    //   }
+
+    //   let realPath;
+    //   try {
+    //     realPath = fs.realpathSync(modulePath);
+    //   } catch (err) {
+    //     return true;
+    //   }
+
+    //   const libsPath = path.resolve(process.cwd(), '../../libs');
+    //   if (realPath.startsWith(libsPath)) {
+    //     console.log("MATCH");
+    //     return true;
+    //   }
+
+    //   return false;
+    // },
+    loader: "babel-loader",
+    options: getParserConfig(module),
+  }];
 }
 
 module.exports = function makeConfig(env) {
   const {
     development = env.development,
     entry = "./src/index.jsx",
-    module,
+    parser = hasSwcRc ? "swc" : undefined,
     publicPath = "/",
+    targets = [],
   } = pkg;
-  let { targets, main, template } = pkg;
+  let { main, template } = pkg;
 
   if (!main) {
     template = "./index.html";
@@ -120,10 +199,21 @@ module.exports = function makeConfig(env) {
     },
     target: "web",
     plugins: [
+      // new SrcDirectoryEnforcerPlugin(),
       new MiniCssExtractPlugin(),
       new webpack.DefinePlugin({
         "process.env": JSON.stringify(dot)
       }),
+      // new webpack.NormalModuleReplacementPlugin(
+      //   /..\/..\/libs/, // Regex to match the path
+      //   resource => {
+      //     if (resource.context.includes(path.resolve(process.cwd() + '/../../libs'))) {
+      //       // Modify the resource request to ignore or redirect
+      //       console.log("HERE", resource.context);
+      //       resource.request = '/dev/null'; // Redirect to an empty module
+      //     }
+      //   }
+      // ),
       function() {
         this.hooks.done.tap('DonePlugin', (stats) => {
           fs.writeFileSync(
@@ -140,32 +230,7 @@ module.exports = function makeConfig(env) {
       }),
     ] : []),
     module: {
-      rules: (hasSwcRc ? [
-        {
-          test: /\.(js|ts|tsx|jsx)$/i,
-          exclude: /node_modules/,
-          use: {
-            loader: require.resolve("swc-loader"),
-            options: {
-              ...swcConfig,
-              sourceMaps: development,
-              minify: !development,
-            },
-          },
-        },
-      ] : [
-        {
-          test: /\.(js|jsx)$/i,
-          exclude: /node_modules/,
-          loader: "babel-loader",
-          options: getBabelConfig(module),
-        },
-        {
-          test: /\.(ts|tsx)$/i,
-          exclude: /node_modules/,
-          loader: "ts-loader",
-        },
-      ]).concat([
+      rules: [
         {
           test: /\.css/i,
           use: [
@@ -189,17 +254,17 @@ module.exports = function makeConfig(env) {
           test: /\.html$/,
           loader: 'html-loader'
         },
-      ]),
+      ],
     },
     resolveLoader: {
       modules: depModules,
       extensions: ['.js', '.json'],
-      mainFields: ['loader', 'main'],
-      symlinks: true,
+      // symlinks: true,
+      // symlinks: false,
     },
     experiments: {},
     externalsType: "umd",
-    devtool: "source-map",
+    // devtool: "source-map",
     // experiments: {
     //   type: "module",
     //   outputModule: true,
@@ -207,8 +272,12 @@ module.exports = function makeConfig(env) {
     resolve: {
       modules: depModules,
       extensions: [".js", ".jsx", ".ts", ".tsx"],
-      symlinks: true,
+      // symlinks: true,
+      // symlinks: false,
       enforceExtension: false,
+      // mainFields: ['main', 'module'],
+      // mainFields: ["browser", 'main', 'module'],
+      mainFields: ["browser", 'module', 'main'],
     },
     externals: {},
     optimization: {
@@ -241,16 +310,17 @@ module.exports = function makeConfig(env) {
     ...pkg.externals,
   } : pkg.externals) : libraryExternals();
 
-  if (!targets) {
-    targets = ["umd"];
-    if (pkg.module)
-      targets.push("module");
-  }
+  if (pkg.module)
+    targets.push("module");
+
+  if (pkg.main || !targets.length)
+    targets.push("umd");
 
   let configs = [];
 
   for (const target of targets) {
     let lname = main;
+    let module = false;
 
     const targetConfig = {
       ...config,
@@ -262,9 +332,11 @@ module.exports = function makeConfig(env) {
     switch (target) {
       case "amd": lname = pkg.amd; break;
       case "module":
+        module = true;
         lname = pkg.module;
-        targetConfig.externalsType = "module";
-        targetConfig.experiments.outputModule = true;
+        // targetConfig.externalsType = "module";
+        // targetConfig.experiments.outputModule = true;
+        // targetConfig.resolve.mainFields = ["module", "main"];
         break;
     }
 
@@ -281,11 +353,13 @@ module.exports = function makeConfig(env) {
     targetConfig.output.environment = { "const": true };
 
     if (template) {
+      // module = pkg.module === undefined || !!pkg.module;
+
       // targetConfig.externalsType = "var";
       targetConfig.plugins.push(new HtmlWebpackPlugin({
         inject: true,
         template,
-        // scriptLoading: "module",
+        scriptLoading: module ? "module" : "defer",
         // importMap: JSON.stringify(require(process.cwd() + "/import.json")),
       }));
       targetConfig.plugins.push(new IndexPlugin(development));
@@ -298,7 +372,6 @@ module.exports = function makeConfig(env) {
           require.resolve("webpack-hot-middleware/client"),
           entry,
         ];
-        targetConfig.devtool = "inline-source-map";
         targetConfig.devServer = {
           open: true,
           hot: true,
@@ -310,21 +383,32 @@ module.exports = function makeConfig(env) {
           new webpack.HotModuleReplacementPlugin()
         );
 
-        targetConfig.plugins.push(
-          new ReactRefreshWebpackPlugin({
-            overlay: {
-              sockIntegration: "whm",
-            },
-          }),
-        );
+        // targetConfig.plugins.push(
+        //   new ReactRefreshWebpackPlugin({
+        //     overlay: {
+        //       sockIntegration: "whm",
+        //     },
+        //   }),
+        // );
       } else
         targetConfig.plugins.push(
           new WorkboxWebpackPlugin.GenerateSW(),
         );
     }
 
+    if (module) {
+      targetConfig.externalsType = "module";
+      targetConfig.experiments.outputModule = true;
+      // targetConfig.resolve.mainFields = ["browser", "module", "main"];
+    }
+
+    targetConfig.module.rules = config.module.rules.concat(getCodeRules(module, parser));
+    console.log("CONFIG", targetConfig.output.filename, targetConfig.module.rules[targetConfig.module.rules.length - 1].options, module, parser);
+    // for (const rule of targetConfig.module.rules)
+    //   console.log("RULE", JSON.stringify(rule));
     configs.push(targetConfig);
   }
 
+  fs.writeFileSync(process.cwd() + "/wp.config.json", JSON.stringify(configs));
   return configs;
 }
