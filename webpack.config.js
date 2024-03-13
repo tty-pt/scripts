@@ -14,8 +14,8 @@ const mainPkg = pkg;
 const scriptsPackage = require("./package.json");
 
 class IndexPlugin {
-  constructor(development) {
-    this.publicUrl = development ? "" : (pkg.publicUrl ?? "");
+  constructor(publicPath) {
+    this.publicPath = publicPath.substring(0, publicPath.length - 1);
   }
 
   apply(compiler) {
@@ -25,9 +25,9 @@ class IndexPlugin {
         .afterTemplateExecution.tap('IndexPlugin', data => {
           data.html = data.html.replace(
             new RegExp('%PUBLIC_URL%', 'g'),
-            this.publicUrl
+            this.publicPath
           );
-          // ).replace(new RegExp("\"./", "g"), this.publicUrl);
+          // ).replace(new RegExp("\"./", "g"), this.publicPath);
         });
     });
   }
@@ -62,12 +62,8 @@ if (fs.existsSync(dotPath)) {
   }, {});
 }
 
-function externalKeys(pkg, options = {}) {
-  const { optional, explicit } = options;
-  return explicit ? Object.keys(pkg.external ?? {})
-    : Object.keys(pkg.peerDependencies ?? {})
-    .concat(optional ? Object.keys(pkg.optionalDependencies ?? {}) : [])
-    .concat(Object.keys(pkg.dependencies ?? {}));
+function externalKeys(pkg) {
+  return Object.keys(pkg.external ?? {});
 }
 
 function depModule(dep) {
@@ -75,15 +71,14 @@ function depModule(dep) {
   return thisPath.substring(0, thisPath.lastIndexOf(dep) - 1);
 }
 
-function getDepModules() {
+function getDepModules(cat) {
   return [
     "node_modules",
     "node_modules/@tty-pt/scripts/node_modules",
     "src"
-  ].concat(Object.keys(scriptsPackage.dependencies).map(depModule));
+  ].concat(cat ? Object.keys(scriptsPackage.dependencies).map(depModule) : []);
 }
 
-const depModules = getDepModules();
 const origBabelConfig = require("./babel.config");
 const origTsConfig = require("./sconfig.json");
 const lastEl = process.cwd().split("/").splice(-1)[0];
@@ -163,7 +158,15 @@ function getCodeRules(module, parser) {
     loader: "babel-loader",
     options: getParserConfig(module, "babel"),
   }] : [{
-    test: /\.(ts|tsx|js|jsx)$/i,
+    test: /\.(ts|tsx)$/i,
+    include: /src/,
+    exclude: excludeArr.concat([/node_modules/]),
+    loader: "esbuild-loader",
+    options: {
+      loader: "tsx",
+    }
+  }, {
+    test: /\.(js|jsx)$/i,
     include: /src/,
     exclude: excludeArr.concat([/node_modules/]),
     loader: "esbuild-loader",
@@ -178,7 +181,7 @@ const cwd = process.cwd();
 const order = ["unpkg", "main:umd", "module", "browser", "main"];
 
 function getImports(imports, path, pkg, explicit, depth = 0) {
-  const extKeys = externalKeys(pkg, { optional: !depth, explicit });
+  const extKeys = externalKeys(pkg);
   depth ++;
 
   for (const dep of extKeys) {
@@ -232,8 +235,8 @@ const imports = Object.entries(unsortedImports).sort(([_akey, adep], [_bkey, bde
 }), {});
 
 const ordType = {
-  'main': 'umd',
-  'browser': 'umd',
+  'main': 'commonjs',
+  'browser': 'iife',
   'main:umd': 'umd',
   'unpkg': 'umd'
 };
@@ -276,7 +279,7 @@ function otherExtProc(key, imp, extType) {
 
   return [
     path,
-    (mainPkg.copyUnresolved ? "./lib/" + key + "/" + entry : imp.path + entry),
+    (mainPkg.copyUnresolved ? "./node_modules/" + key + "/" + entry : imp.path + entry),
     entry
   ]
 }
@@ -294,11 +297,11 @@ function moduleExtProc(key, imp, extType) {
 }
 
 class ImportsPlugin {
-  constructor(imports, module, pkg, env) {
+  constructor(imports, module, publicPath) {
     this.importMap = { imports: Object.entries(imports).reduce((a, [key, value]) => ({ ...a, [key]: value.path }), {}) };
     this.imports = imports;
     this.module = module;
-    this.publicPath = pkg.homepage && !env.server ? pkg.homepage + "/" : "/";
+    this.publicPath = publicPath;
   }
 
   apply(compiler) {
@@ -329,15 +332,17 @@ class ImportsPlugin {
 module.exports = function makeConfig(env) {
   const {
     development = env.development,
-    entry = "./src/index.jsx",
     parser = hasSwcRc ? "swc" : undefined,
-    publicPath = pkg.template ? (pkg.homepage && !env.server ? pkg.homepage + "/" : "/") : "./lib/" + pkg.name + "/dist/",
     targets = [],
     template,
   } = pkg;
 
+  const entry = pkg.entry ? (typeof pkg.entry === "string" ? "./" + pkg.entry : pkg.entry) : "./src/index.jsx";
+
+  const publicPath = env.server ? "/" : (pkg.publicPath ? pkg.publicPath : "/node_modules/" + pkg.name + "/dist/");
+
   const config = {
-    mode: "production",
+    mode: development ? "development" : "production",
     entry: {},
     output: {
       filename: '[name].js', // overwritten
@@ -393,7 +398,7 @@ module.exports = function makeConfig(env) {
       ],
     },
     resolveLoader: {
-      modules: depModules,
+      modules: getDepModules(true),
       extensions: ['.js', '.json'],
     },
     experiments: {},
@@ -424,7 +429,7 @@ module.exports = function makeConfig(env) {
           .reduce((a, [key, value]) => ({ ...a, [key]: value }), {})
         ),
       },
-      modules: depModules,
+      modules: getDepModules(),
       extensions: [".js", ".jsx", ".ts", ".tsx"],
       enforceExtension: false,
       mainFields: ["browser", 'module', 'main'],
@@ -471,8 +476,11 @@ module.exports = function makeConfig(env) {
   if (pkg.module && !pkg["!module"])
     targets.push("module");
 
-  if (pkg.main || !targets.length)
-    targets.push("umd");
+  if (pkg.main)
+    targets.push("commonjs");
+
+  if (pkg.browser)
+    targets.push("iife");
 
   let configs = [];
 
@@ -482,6 +490,7 @@ module.exports = function makeConfig(env) {
 
     const targetConfig = {
       ...config,
+      entry: {},
       experiments: { ...config.experiments },
       output: { ...config.output },
       plugins: [ ...config.plugins ],
@@ -489,6 +498,7 @@ module.exports = function makeConfig(env) {
 
     switch (target) {
       case "amd": lname = pkg.amd; break;
+      case "iife": lname = pkg.browser; break;
       case "module":
         module = true;
         lname = pkg.module;
@@ -496,7 +506,15 @@ module.exports = function makeConfig(env) {
     }
 
     const filename = getFilename(lname);
-    targetConfig.entry[filename] = entry;
+    if (typeof entry === "string")
+      targetConfig.entry[filename] = entry;
+    else {
+      const newEntry = { ...entry };
+      const mainEntry = newEntry.main;
+      delete newEntry.main;
+      newEntry[filename] = mainEntry;
+      target.entry = newEntry;
+    }
 
     if (module) {
       targetConfig.externalsType = "module";
@@ -513,9 +531,9 @@ module.exports = function makeConfig(env) {
       copyPatterns.push({ from: "./public", to: "" });
 
     for (const dep in imports) {
-      if (!mainPkg.external[dep])
+      if (!mainPkg.external?.[dep])
         continue;
-      const isModule = mainPkg.external[dep].substring(0, 7) === "module ";
+      const isModule = mainPkg.external?.[dep].substring(0, 7) === "module ";
       const extProc = isModule ? moduleExtProc : otherExtProc;
       const [key, value, entry] = extProc(dep, imports[dep], targetConfig.externalsType);
       if (value) {
@@ -523,18 +541,18 @@ module.exports = function makeConfig(env) {
         targetImports[dep] = { path: value, module: isModule };
       }
 
-      if (!entry)
+      if (env.server)
+        extInfo.push([dep, key, value, entry]);
+
+      if (typeof entry !== "string")
         continue;
 
       const depDist = entry.split("/")[0];
 
-      if (env.server)
-        extInfo.push("./node_modules/" + dep + "/" + depDist);
-
-      else if (mainPkg.copyUnresolved)
+      if (!env.server && mainPkg.copyUnresolved)
         copyPatterns.push({
           from: "./node_modules/" + dep + "/" + depDist,
-          to: "lib/" + dep + "/" + depDist,
+          to: "node_modules/" + dep + "/" + depDist,
         });
     }
 
@@ -550,8 +568,8 @@ module.exports = function makeConfig(env) {
         template,
         scriptLoading: module ? "module" : "defer",
       }));
-      targetConfig.plugins.push(new ImportsPlugin(targetImports, module, mainPkg, env));
-      targetConfig.plugins.push(new IndexPlugin(development));
+      targetConfig.plugins.push(new ImportsPlugin(targetImports, module, publicPath));
+      targetConfig.plugins.push(new IndexPlugin(publicPath));
 
       if (development && !pkg.static) {
         targetConfig.entry[filename] = [
@@ -576,15 +594,18 @@ module.exports = function makeConfig(env) {
             },
           }),
         );
-
-        targetConfig.plugins.unshift(
-          new ExtInfoPlugin(extInfo)
-        );
       } else
         targetConfig.plugins.push(
           new WorkboxWebpackPlugin.GenerateSW(),
         );
     }
+
+    targetConfig.plugins.unshift(
+      new ExtInfoPlugin({
+        externals: extInfo,
+        type: target,
+      })
+    );
 
     if (pkg.library || !template) {
       const name = typeof pkg.library === "string"

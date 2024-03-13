@@ -60,8 +60,8 @@ You can use this property to specify the transpiler. Some possible values are: "
 ## minimizer
 This property can be used to specify the minimizer. It can be "swc", "esbuild" or "terser". By default, "esbuild" is used.
 
-## publicUrl
-You can use this property to specify the publicUrl of your application in production mode.
+## publicPath
+You can use this property to specify the publicPath of your application in production mode.
 
 ## development
 You can use this (with a value of "true")  so that scripts will build your thing in development mode, and not minify.
