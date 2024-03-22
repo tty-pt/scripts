@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "baseUrl": "./src",
-    "outDir": "./dist/",
+    "outDir": "./types/",
     "sourceMap": true,
     "strictNullChecks": true,
     "module": "ESNext",
@@ -11,6 +11,7 @@
     "allowJs": true,
     "esModuleInterop": true,
     "moduleResolution": "node",
+    "emitDeclarationOnly": true,
     "allowSyntheticDefaultImports": true,
     "downlevelIteration": true,
     "experimentalDecorators": true,

@@ -1,7 +1,25 @@
 const { makeConfig } = require("./webpack");
+const fs = require("fs");
 const pkg = require(process.cwd() + "/package.json");
 const { externalGlobalPlugin } = require("esbuild-plugin-external-global");
+const { htmlPlugin } = require('@craftamap/esbuild-plugin-html');
 const fg = require("fast-glob");
+
+function injectExternals(template, externals, publicPath) {
+  let htmlContent = template;
+
+  const scripts = externals.map(([_dep, _key, url]) =>
+    `<script src="${url.substring(0, 4) === "http" ? url : publicPath + url}"></script>`
+  ).join('');
+
+  htmlContent = htmlContent.replace('</body>', `${scripts}</body>`);
+  htmlContent = htmlContent.replaceAll(
+    '%PUBLIC_URL%',
+    publicPath.substring(0, publicPath.length - 1),
+  );
+
+  return htmlContent;
+}
 
 function getDist(filename) {
   const distSplits = filename.split("/");
@@ -37,7 +55,7 @@ function toEntry(path) {
   return file.substring(0, file.lastIndexOf("."));
 }
 
-module.exports = function getConfigs(env) {
+function getConfigs(env) {
   const origConfigs = makeConfig(env);
 
   const configs = {
@@ -48,7 +66,9 @@ module.exports = function getConfigs(env) {
 
   for (const config of origConfigs) {
     const libType = config.plugins[0].extInfo.type ?? "module";
-    const globExt = config.plugins[0].extInfo.externals;
+    const globalExternal = config.plugins[0].extInfo.externals;
+    const copyPatterns = libType === "iife" && pkg.template
+      ? config.plugins[0].extInfo.copyPatterns : [];
     const type = esbuildTypes[libType];
     const externals = Object.entries(config.externals ?? {});
     const otherExternals = [];
@@ -76,7 +96,7 @@ module.exports = function getConfigs(env) {
     if (type) {
       const { format, bundle, outfile } = type;
       const dist = getDist(outfile);
-      const usesOutdir = typeof pkg.entry !== "string" || libType === "module" || env.server;
+      const usesOutdir = typeof pkg.entry !== "string" || libType === "module" || pkg.template;
       const mainEntry = pkg.entry.main;
       const entry = typeof pkg.entry === "string" ? pkg.entry : { ...pkg.entry };
       delete entry.main;
@@ -100,10 +120,11 @@ module.exports = function getConfigs(env) {
         loader: {
           '.png': 'dataurl',
           '.svg': 'dataurl',
-          '.woff': 'file',
-          '.woff2': 'file',
-          '.eot': 'file',
-          '.ttf': 'file',
+          '.woff': 'dataurl',
+          '.woff2': 'dataurl',
+          '.eot': 'dataurl',
+          '.ttf': 'dataurl',
+          '.css': format === "cjs" ? "empty": "css",
           '.js': 'jsx',
           '.jsx': 'jsx',
           '.ts': 'tsx',
@@ -114,17 +135,34 @@ module.exports = function getConfigs(env) {
         // publicPath: (
         //   "./lib/" + pkg.name + "/" + dist + "/"
         // ),
-        publicPath: "./",
+        publicPath: env.server || !pkg.template ? "." : (
+          pkg.publicPath ? pkg.publicPath : "./node_modules/" + pkg.name + "/dist"
+        ),
         metafile: true,
         // external: bundle ? otherExternals.concat(globalExternals.map(([key]) => key)) : undefined,
         external: bundle ? otherExternals : undefined,
-        globalExternal: env.server ? globExt : undefined,
+        globalExternal,
+        copyPatterns,
         plugins: bundle ? [
           externalGlobalPlugin(globalExternals
             .reduce((a, [key, value]) => ({ ...a, [key]: 'globalThis.' + value, }), {})
           ),
         ] : [],
       };
+
+      if (pkg.template) {
+        esConfig.plugins.push(htmlPlugin({
+          files: [{
+            entryPoints: [pkg.entry],
+            htmlTemplate: injectExternals(
+              fs.readFileSync(process.cwd() + "/" + pkg.template, "utf-8"),
+              esConfig.globalExternal,
+              env.server ? "." : esConfig.publicPath,
+            ),
+            filename: "index.html",
+          }]
+        }));
+      }
 
       configs.esbuild.push(esConfig);
     } else
@@ -133,3 +171,5 @@ module.exports = function getConfigs(env) {
 
   return configs;
 }
+
+module.exports = { getConfigs, getDist };

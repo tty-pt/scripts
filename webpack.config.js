@@ -253,12 +253,21 @@ function otherExtProc(key, imp, extType) {
   const glob = mainPkg.external?.[key];
   let path;
   let entry;
+  let prefix;
 
-  if (mainPkg.resolve?.[key]) {
-    const cdn = (mainPkg.cdn ?? "https://unpkg.com/$NAME@$VERSION")
-      .replace("$NAME", key).replace("$VERSION", imports[key].pkg.version);
-    return [glob, cdn + "/" + mainPkg.resolve[key]];
-  }
+  const cdnPrefix = mainPkg.cdn?.default ?? "https://unpkg.com/$NAME@$VERSION";
+
+  if (typeof mainPkg.cdn?.[key] === "string") {
+    const baseCdn = mainPkg.cdn[key];
+    const cdn = (baseCdn.substring(0, 4) === "http"
+      ? baseCdn
+      : cdnPrefix + "/" +  baseCdn
+    ).replace("$NAME", key).replace("$VERSION", imports[key].pkg.version);
+    return [glob, cdn];
+  } else if (mainPkg.cdn?.[key])
+    prefix = cdnPrefix.replace("$NAME", key).replace("$VERSION", imports[key].pkg.version);
+  else
+    prefix = "./node_modules/" + key;
 
   for (const ord of order) {
     if (ord === "module" && extType !== "module")
@@ -266,20 +275,19 @@ function otherExtProc(key, imp, extType) {
     else if (imp[ord]) {
       const type = (ordType[ord] ?? ord);
       path = glob ? glob : (type === extType ? "" : type  + " ");
-      entry = mainPkg.resolve?.[key] ?? imp[ord];
+      entry = imp[ord];
       break;
     }
   }
 
   if (!entry) {
-    entry = mainPkg.resolve?.[key]
-      ?? imp.pkg.exports["./" + key.substring(imp.pkg.name.length + 1)];
+    entry = imp.pkg.exports["./" + key.substring(imp.pkg.name.length + 1)];
     path = glob;
   }
 
   return [
     path,
-    (mainPkg.copyUnresolved ? "./node_modules/" + key + "/" + entry : imp.path + entry),
+    prefix + "/" + entry,
     entry
   ]
 }
@@ -288,7 +296,7 @@ function moduleExtProc(key, imp, extType) {
   const prefix = extType === "module" ? "" : "module ";
   if (imp.pkg.module)
     return [prefix + key, imp.path + imp.pkg.module, imp.pkg.module];
-  else if (mainPkg.resolve?.[key]) {
+  else if (mainPkg.cdn?.[key]) {
     const cdn = (mainPkg.cdn ?? "https://cdn.skypack.dev/$NAME@$VERSION")
       .replace("$NAME", dep).replace("$VERSION", depPkg.version);
     return [prefix + key, cdn];
@@ -417,7 +425,7 @@ module.exports = function makeConfig(env) {
     // },
     resolve: {
       alias: {
-        ...(Object.entries(mainPkg.resolve ?? {})
+        ...(Object.entries(mainPkg.cdn ?? {})
           .filter(([_key, value]) => {
             try {
               require.resolve(value);
@@ -528,7 +536,7 @@ module.exports = function makeConfig(env) {
     const extInfo = [];
 
     if (fs.existsSync(process.cwd() + "/public"))
-      copyPatterns.push({ from: "./public", to: "" });
+      copyPatterns.push({ from: "public", to: "" });
 
     for (const dep in imports) {
       if (!mainPkg.external?.[dep])
@@ -541,7 +549,7 @@ module.exports = function makeConfig(env) {
         targetImports[dep] = { path: value, module: isModule };
       }
 
-      if (env.server)
+      if (pkg.template)
         extInfo.push([dep, key, value, entry]);
 
       if (typeof entry !== "string")
@@ -549,9 +557,9 @@ module.exports = function makeConfig(env) {
 
       const depDist = entry.split("/")[0];
 
-      if (!env.server && mainPkg.copyUnresolved)
+      if (!env.server && !mainPkg.cdn?.[dep])
         copyPatterns.push({
-          from: "./node_modules/" + dep + "/" + depDist,
+          from: "node_modules/" + dep + "/" + depDist,
           to: "node_modules/" + dep + "/" + depDist,
         });
     }
@@ -604,6 +612,7 @@ module.exports = function makeConfig(env) {
       new ExtInfoPlugin({
         externals: extInfo,
         type: target,
+        copyPatterns,
       })
     );
 

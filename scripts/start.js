@@ -3,85 +3,22 @@ const fs = require("fs");
 const path = require("path");
 const pkg = require(process.cwd() + "/package.json");
 const port = 3030;
-const getConfigs = require("../getConfigs");
+const { getConfigs } = require("../getConfigs");
 const configs = getConfigs({ development: true, server: true });
 let webpackCompiler;
 
 const app = express();
 
-/*
-function isExternalCss(importPath) {
-  return importPath.endsWith('.css');
-}
-*/
-
-const injectExternalsPlugin = (externals) => ({
-  name: 'inject-externals',
-  setup(build) {
-    /*
-    const cssFiles = new Set();
-    const externalMap = externals.reduce((a, [dep]) => ({ ...a, [dep]: true}), {});
-
-    build.onResolve({ filter: /\.css$/ }, args => {
-      if (isExternalCss(args.path)) {
-        if (args.path.substring(0, 1) === ".") {
-          return { path: path.resolve(args.resolveDir, args.path), external: false };
-        }
-
-        const [org, pack] = args.path.split("/");
-        if (externalMap[org] || externalMap[org + "/" + pack]) {
-          cssFiles.add("./node_modules/" + args.path);
-          return { path: args.path, external: true };
-        } else
-          return {
-            path: require.resolve(process.cwd() + "/node_modules/" + args.path),
-            external: false,
-          };
-      }
-    });
-    */
-
-    build.onEnd((_result) => {
-      const outputPath = path.join(build.initialOptions.outdir, 'index.html');
-      let htmlContent = fs.readFileSync(outputPath, 'utf8');
-
-      const scripts = externals.map(([_dep, _key, url]) =>
-        `<script src="${url}"></script>`
-      ).join('');
-
-      /*
-      const links = Array.from(cssFiles).map(cssFile => {
-        const relativePath = path.relative(path.dirname(outputPath), cssFile);
-        return `<link rel="stylesheet" href="${relativePath}">`;
-      }).join('\n');
-
-      htmlContent = htmlContent.replace('</head>', `${links}</head>`);
-      */
-      htmlContent = htmlContent.replace('</body>', `${scripts}</body>`);
-
-      fs.writeFileSync(outputPath, htmlContent, 'utf8');
-    });
-  }
-});
-
 if (fs.existsSync("./src/setupProxy.js"))
   require(process.cwd() + "/src/setupProxy.js")(app);
 
-if (pkg.devServer === "esbuild" && configs.esbuild.length) {
+if (configs.esbuild.length) {
   const esbuild = require("esbuild");
   const { livereloadPlugin } = require('@jgoz/esbuild-plugin-livereload');
-  const { htmlPlugin } = require('@craftamap/esbuild-plugin-html');
   const firstConfig = configs.esbuild[0];
   firstConfig.plugins.push(livereloadPlugin());
-  firstConfig.plugins.push(htmlPlugin({
-    files: [{
-      entryPoints: [pkg.entry],
-      htmlTemplate: fs.readFileSync(process.cwd() + "/" + pkg.template, "utf-8"),
-      filename: "index.html",
-    }]
-  }));
-  firstConfig.plugins.push(injectExternalsPlugin(firstConfig.globalExternal));
   delete firstConfig.globalExternal;
+  delete firstConfig.copyPatterns;
   esbuild.build(firstConfig);
   app.use(express.static(process.cwd() + "/build"));
 // } else if (configs.webpack.length) {

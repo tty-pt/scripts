@@ -69,16 +69,16 @@ You can use this (with a value of "true")  so that scripts will build your thing
 ## external
 This should be an object, in which each key is a library name, and the values are externals. You can specify these [the same way you'd specify externals in webpack](https://webpack.js.org/configuration/externals/#string).
 
-## resolve
+## cdn
 With this, you can specify an entry point for your externals. For example, react's umd entry point is usually "umd/react.production.min.js".
 
-This is also supposed to be an object in which keys are dependency names, and values are things like this.
+This is also supposed to be an object in which keys are dependency names, and values are things like this. They can also be "true".
 
-## cdn
-Set this to a string in the format: `https://cdn.skypack.dev/$NAME@$VERSION`. This will inform scripts where the resolved externals will be fetched from, so it can include the correct \<script\> reference.
+If they are true, they will resolve automatically and use the default CDN.
 
-## copyUnresolved
-Set this to "true" to make sure that the externals that are not listed as resolving to a specific file don't use a cdn, and instead they are copied to the "build" or "dist" folder, so they can be served with the rest of your application.
+You can also prepend every value with a string like: `https://cdn.skypack.dev/$NAME@$VERSION`.
+
+And override the default cdn by setting cdn.default.
 
 ## serve
 This should be an array of strings, indicating which folders should be served by the development server.
