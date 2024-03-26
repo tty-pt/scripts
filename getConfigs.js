@@ -135,9 +135,10 @@ function getConfigs(env) {
         // publicPath: (
         //   "./lib/" + pkg.name + "/" + dist + "/"
         // ),
-        publicPath: env.server || !pkg.template ? "." : (
-          pkg.publicPath ? pkg.publicPath : "./node_modules/" + pkg.name + "/dist"
-        ),
+        publicPath: "",
+        // publicPath: env.server || !pkg.template || pkg.library ? "." : (
+        //   pkg.publicPath ? pkg.publicPath : "/node_modules/" + pkg.name + "/" + dist + "/"
+        // ),
         metafile: true,
         // external: bundle ? otherExternals.concat(globalExternals.map(([key]) => key)) : undefined,
         external: bundle ? otherExternals : undefined,
@@ -157,7 +158,7 @@ function getConfigs(env) {
             htmlTemplate: injectExternals(
               fs.readFileSync(process.cwd() + "/" + pkg.template, "utf-8"),
               esConfig.globalExternal,
-              env.server ? "." : esConfig.publicPath,
+              env.server ? "." : esConfig.publicPath
             ),
             filename: "index.html",
           }]

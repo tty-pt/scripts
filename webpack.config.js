@@ -536,7 +536,7 @@ module.exports = function makeConfig(env) {
     const extInfo = [];
 
     if (fs.existsSync(process.cwd() + "/public"))
-      copyPatterns.push({ from: "public", to: "" });
+      copyPatterns.push({ from: "public/*", to: "" });
 
     for (const dep in imports) {
       if (!mainPkg.external?.[dep])

@@ -1,11 +1,11 @@
 const { getConfigs, getDist } = require("../getConfigs");
-const fs = require("fs-extra");
 const path = require("path");
 const { webpack } = require("../webpack");
 const esbuild = require("esbuild");
 const { bias } = require("../bias");
 const pkg = require(process.cwd() + "/package.json");
 const ts = require("typescript");
+const { execSync } = require('child_process');
 
 function tscompile() {
   const configFile = ts.readConfigFile(bias('tsconfig.json'), ts.sys.readFile);
@@ -43,11 +43,15 @@ if (pkg.forceWebpack)
 else {
   for (const config of configs.esbuild) {
     if (config.outdir)
-      for (const pattern of config.copyPatterns)
-        fs.copySync(
-          process.cwd() + "/" + pattern.from,
-          process.cwd() + "/" + config.outdir + "/" + pattern.to
-        );
+      for (const pattern of config.copyPatterns) {
+        const source = process.cwd() + "/" + pattern.from;
+        const destination = process.cwd() + "/" + config.outdir + "/" + pattern.to;
+
+        execSync(`
+          mkdir -p $(basename ${destination});
+          cp -r ${source} ${destination}
+        `);
+      }
     delete config.globalExternal;
     delete config.copyPatterns;
     esbuild.build(config);
