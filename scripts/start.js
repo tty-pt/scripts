@@ -14,13 +14,26 @@ if (fs.existsSync("./src/setupProxy.js"))
 
 if (configs.esbuild.length) {
   const esbuild = require("esbuild");
-  const { livereloadPlugin } = require('@jgoz/esbuild-plugin-livereload');
+  const chokidar = require("chokidar");
+  const livereload = require("livereload");
+  const connectLivereload = require("connect-livereload");
+  const debounce = require("lodash.debounce");
   const firstConfig = configs.esbuild[0];
-  firstConfig.plugins.push(livereloadPlugin());
+  const livereloadServer = livereload.createServer();
+  livereloadServer.watch(process.cwd() + "/build");
+  const oldPlugins = firstConfig.plugins;
   delete firstConfig.globalExternal;
   delete firstConfig.copyPatterns;
   esbuild.build(firstConfig);
+  firstConfig.plugins = oldPlugins;
+  app.use(connectLivereload());
   app.use(express.static(process.cwd() + "/build"));
+  const rebuild = debounce(() => {
+    esbuild.build(firstConfig)
+      .then(() => console.log("BUILT"))
+      .catch(() => console.warn("FAILED BUILDING"));
+  }, 300);
+  chokidar.watch(process.cwd() + "/src", { interval: 0 }).on("all", () => rebuild()); 
 // } else if (configs.webpack.length) {
 } else {
   const { webpack } = require("../webpack");
