@@ -135,10 +135,9 @@ function getConfigs(env) {
         // publicPath: (
         //   "./lib/" + pkg.name + "/" + dist + "/"
         // ),
-        publicPath: "",
-        // publicPath: env.server || !pkg.template || pkg.library ? "." : (
-        //   pkg.publicPath ? pkg.publicPath : "/node_modules/" + pkg.name + "/" + dist + "/"
-        // ),
+        publicPath: env.server || !pkg.template || pkg.library ? "" : (
+          pkg.publicPath ? pkg.publicPath : "/node_modules/" + pkg.name + "/" + dist + "/"
+        ),
         metafile: true,
         // external: bundle ? otherExternals.concat(globalExternals.map(([key]) => key)) : undefined,
         external: bundle ? otherExternals : undefined,

@@ -560,7 +560,7 @@ module.exports = function makeConfig(env) {
       if (!env.server && !mainPkg.cdn?.[dep])
         copyPatterns.push({
           from: "node_modules/" + dep + "/" + depDist,
-          to: "node_modules/" + dep + "/" + depDist,
+          to: "node_modules/" + dep + "/",
         });
     }
 

@@ -48,7 +48,7 @@ else {
         const destination = process.cwd() + "/" + config.outdir + "/" + pattern.to;
 
         execSync(`
-          mkdir -p $(basename ${destination});
+          mkdir -p ${destination};
           cp -r ${source} ${destination}
         `);
       }
