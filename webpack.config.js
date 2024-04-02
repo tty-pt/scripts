@@ -202,6 +202,11 @@ function getImports(imports, path, pkg, explicit, depth = 0) {
         break;
     }
 
+    if (!fs.existsSync(depPkgPath)) {
+      const res = require.resolve(dep);
+      depPkgPath = res.substring(0, res.lastIndexOf(dep)) + dep + "/package.json";
+    }
+
     const depPkg = JSON.parse(fs.readFileSync(depPkgPath, "utf-8"));
     const depPath = path + shifted.join("/");
 
@@ -254,6 +259,7 @@ function otherExtProc(key, imp, extType) {
   let path;
   let entry;
   let prefix;
+  let ord = "main";
 
   const cdnPrefix = mainPkg.cdn?.default ?? "https://unpkg.com/$NAME@$VERSION";
 
@@ -263,19 +269,20 @@ function otherExtProc(key, imp, extType) {
       ? baseCdn
       : cdnPrefix + "/" +  baseCdn
     ).replace("$NAME", key).replace("$VERSION", imports[key].pkg.version);
-    return [glob, cdn];
+    return [glob, cdn, undefined, "browser"];
   } else if (mainPkg.cdn?.[key])
     prefix = cdnPrefix.replace("$NAME", key).replace("$VERSION", imports[key].pkg.version);
   else
     prefix = "./node_modules/" + key;
 
-  for (const ord of order) {
+  for (ord of order) {
     if (ord === "module" && extType !== "module")
       continue;
     else if (imp[ord]) {
       const type = (ordType[ord] ?? ord);
       path = glob ? glob : (type === extType ? "" : type  + " ");
       entry = imp[ord];
+      ord = ord;
       break;
     }
   }
@@ -288,18 +295,19 @@ function otherExtProc(key, imp, extType) {
   return [
     path,
     prefix + "/" + entry,
-    entry
+    entry,
+    ord
   ]
 }
 
 function moduleExtProc(key, imp, extType) {
   const prefix = extType === "module" ? "" : "module ";
   if (imp.pkg.module)
-    return [prefix + key, imp.path + imp.pkg.module, imp.pkg.module];
+    return [prefix + key, imp.path + imp.pkg.module, imp.pkg.module, "module"];
   else if (mainPkg.cdn?.[key]) {
     const cdn = (mainPkg.cdn ?? "https://cdn.skypack.dev/$NAME@$VERSION")
       .replace("$NAME", dep).replace("$VERSION", depPkg.version);
-    return [prefix + key, cdn];
+    return [prefix + key, cdn, undefined, "browser"];
   } else
     return otherExtProc(key, imp, extType);
 }
@@ -543,14 +551,14 @@ module.exports = function makeConfig(env) {
         continue;
       const isModule = mainPkg.external?.[dep].substring(0, 7) === "module ";
       const extProc = isModule ? moduleExtProc : otherExtProc;
-      const [key, value, entry] = extProc(dep, imports[dep], targetConfig.externalsType);
+      const [key, value, entry, ord] = extProc(dep, imports[dep], targetConfig.externalsType);
       if (value) {
         targetConfig.externals[dep] = key;
-        targetImports[dep] = { path: value, module: isModule };
+        targetImports[dep] = { path: value, ord };
       }
 
       if (pkg.template)
-        extInfo.push([dep, key, value, entry]);
+        extInfo.push([dep, key, value, entry, ord]);
 
       if (typeof entry !== "string")
         continue;

@@ -3,13 +3,14 @@ const fs = require("fs");
 const pkg = require(process.cwd() + "/package.json");
 const { externalGlobalPlugin } = require("esbuild-plugin-external-global");
 const { htmlPlugin } = require('@craftamap/esbuild-plugin-html');
+const { copy } = require('esbuild-plugin-copy');
 const fg = require("fast-glob");
 
 function injectExternals(template, externals, publicPath) {
   let htmlContent = template;
 
-  const scripts = externals.map(([_dep, _key, url]) =>
-    `<script src="${url.substring(0, 4) === "http" ? url : publicPath + url}"></script>`
+  const scripts = externals.map(([_dep, _key, url, _entry, ord]) =>
+    `<script ${ord === "module" ? "type=\"module\"" : ""} src="${url.substring(0, 4) === "http" ? url : publicPath + url}"></script>`
   ).join('');
 
   htmlContent = htmlContent.replace('</body>', `${scripts}</body>`);
@@ -140,14 +141,21 @@ function getConfigs(env) {
         ),
         metafile: true,
         // external: bundle ? otherExternals.concat(globalExternals.map(([key]) => key)) : undefined,
-        external: bundle ? otherExternals : undefined,
+        external: format === "cjs" ? otherExternals : undefined,
         globalExternal,
         copyPatterns,
         plugins: bundle ? [
           externalGlobalPlugin(globalExternals
             .reduce((a, [key, value]) => ({ ...a, [key]: 'globalThis.' + value, }), {})
           ),
-        ] : [],
+        ] : [
+          copy({
+            assets: [{
+              "from": ["./src/**/*.css", "./src/**/*.woff"],
+              "to": ["."],
+            }],
+          }),
+        ],
       };
 
       if (pkg.template) {
@@ -160,6 +168,7 @@ function getConfigs(env) {
               env.server ? "." : esConfig.publicPath
             ),
             filename: "index.html",
+            scriptLoading: libType === "module" ? "module": undefined,
           }]
         }));
       }
