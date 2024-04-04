@@ -260,8 +260,9 @@ function otherExtProc(key, imp, extType) {
   let entry;
   let prefix;
   let ord = "main";
-
-  const cdnPrefix = mainPkg.cdn?.default ?? "https://unpkg.com/$NAME@$VERSION";
+  const cdnPrefix = mainPkg.cdn?.default === false
+    ? "./node_modules/$NAME"
+    : (mainPkg.cdn?.default ?? "https://unpkg.com/$NAME@$VERSION");
 
   if (typeof mainPkg.cdn?.[key] === "string") {
     const baseCdn = mainPkg.cdn[key];
@@ -560,16 +561,14 @@ module.exports = function makeConfig(env) {
       if (pkg.template)
         extInfo.push([dep, key, value, entry, ord]);
 
-      if (typeof entry !== "string")
+      if (value.substring(0, 4) === "http" || env.server)
         continue;
 
-      const depDist = entry.split("/")[0];
-
-      if (!env.server && !mainPkg.cdn?.[dep])
-        copyPatterns.push({
-          from: "node_modules/" + dep + "/" + depDist,
-          to: "node_modules/" + dep + "/",
-        });
+      const from = path.dirname(value);
+      copyPatterns.push({
+        from,
+        to: path.dirname(from) + "/",
+      });
     }
 
     if (copyPatterns.length) {

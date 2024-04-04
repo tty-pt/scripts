@@ -49,7 +49,7 @@ else {
 
         execSync(`
           mkdir -p ${destination};
-          cp -r ${source} ${destination}
+          cp -Lr ${source} ${destination}
         `);
       }
     delete config.globalExternal;

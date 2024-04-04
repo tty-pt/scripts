@@ -136,19 +136,19 @@ function getConfigs(env) {
         // publicPath: (
         //   "./lib/" + pkg.name + "/" + dist + "/"
         // ),
-        publicPath: env.server || !pkg.template || pkg.library ? "" : (
+        publicPath: env.server ? "/" : !pkg.template || pkg.library ? "" : (
           pkg.publicPath ? pkg.publicPath : "/node_modules/" + pkg.name + "/" + dist + "/"
         ),
         metafile: true,
         // external: bundle ? otherExternals.concat(globalExternals.map(([key]) => key)) : undefined,
-        external: format === "cjs" ? otherExternals : undefined,
+        external: format === "cjs" ? otherExternals.concat(globalExternals.map(([key]) => key)) : undefined,
         globalExternal,
         copyPatterns,
-        plugins: bundle ? [
+        plugins: bundle ? (format === "cjs" ? [] : [
           externalGlobalPlugin(globalExternals
             .reduce((a, [key, value]) => ({ ...a, [key]: 'globalThis.' + value, }), {})
           ),
-        ] : [
+        ]) : [
           copy({
             assets: [{
               "from": ["./src/**/*.css", "./src/**/*.woff"],

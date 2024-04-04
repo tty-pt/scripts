@@ -89,7 +89,7 @@ if (webpackCompiler)
   });
 else
   app.get('*', (_req, res) => {
-    res.sendFile("/index.html", { root: "./" });
+    res.sendFile("/build/index.html", { root: "./" });
   });
 
 const server = app.listen(port, () => console.log("Running on port " + port));
