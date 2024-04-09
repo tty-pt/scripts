@@ -101,6 +101,7 @@ function getConfigs(env) {
       const mainEntry = pkg.entry.main;
       const entry = typeof pkg.entry === "string" ? pkg.entry : { ...pkg.entry };
       delete entry.main;
+      const isLib = !pkg.template || pkg.library;
 
       const esConfig = {
         entryPoints: format === "esm" ? fg.sync([
@@ -136,9 +137,7 @@ function getConfigs(env) {
         // publicPath: (
         //   "./lib/" + pkg.name + "/" + dist + "/"
         // ),
-        publicPath: env.server ? "/" : !pkg.template || pkg.library ? "" : (
-          pkg.publicPath ? pkg.publicPath : "/node_modules/" + pkg.name + "/" + dist + "/"
-        ),
+        publicPath: !isLib && !env.server ? (pkg.publicPath ?? "/") : (env.server ? "/" : ""),
         metafile: true,
         // external: bundle ? otherExternals.concat(globalExternals.map(([key]) => key)) : undefined,
         external: format === "cjs" ? otherExternals.concat(globalExternals.map(([key]) => key)) : undefined,
