@@ -186,7 +186,8 @@ function getImports(imports, path, pkg, explicit, depth = 0) {
 
   for (const dep of extKeys) {
     if (imports[dep]) {
-      imports[dep].depth = depth;
+      if (depth > imports[dep].depth)
+        imports[dep].depth = depth;
       continue;
     }
 
