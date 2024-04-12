@@ -27,7 +27,7 @@ const scripts = {
   start: scriptCmd("start"), // watch + watch-dev
   run: "NODE_ENV=production node dist/main.js",
   "install-peers": scriptCmd("install-peers"),
-  test: "jest -c ./node_modules/@tty-pt/scripts/jest.config.json",
+  test: "jest -c ./node_modules/@mov-ai/mov-fe-lib-scripts/jest.config.json",
   lint: "eslint --format compact --ext .js,.jsx,.ts,.tsx src",
   init: __dirname + "/../scripts/init.sh",
   storybook: "s/storybook dev",
