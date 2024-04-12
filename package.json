@@ -1,5 +1,5 @@
 {
-  "name": "@tty-pt/scripts",
+  "name": "@mov-ai/mov-fe-lib-scripts",
   "version": "0.6.0-35",
   "description": "Less than react-scripts",
   "main": "index.js",
