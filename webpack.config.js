@@ -6,7 +6,6 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const CopyPlugin = require('copy-webpack-plugin');
 const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
-const EsBuildPlugin = require("esbuild-webpack-plugin").default;
 const { SWCMinifyPlugin } = require("swc-webpack-plugin");
 const TerserPlugin = require('terser-webpack-plugin');
 const pkg = require(process.cwd() + "/package.json");
@@ -470,11 +469,9 @@ module.exports = function makeConfig(env) {
               ecma: 6, // or higher depending on your source code
             },
           })
-        ) : (mainPkg.minimizer === "swc" ? (
-          new SWCMinifyPlugin()
         ) : (
-          new EsBuildPlugin()
-        )),
+          new SWCMinifyPlugin()
+        ),
       ],
     },
   };
