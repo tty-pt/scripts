@@ -11,6 +11,11 @@ const TerserPlugin = require('terser-webpack-plugin');
 const pkg = require(process.cwd() + "/package.json");
 const mainPkg = pkg;
 const scriptsPackage = require("./package.json");
+const cdn = mainPkg.cdn;
+
+for (const key in mainPkg.external)
+  if (!cdn[key])
+    cdn[key] = true;
 
 class IndexPlugin {
   constructor(publicPath) {
