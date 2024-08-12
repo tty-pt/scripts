@@ -1,6 +1,6 @@
 {
   "name": "@tty-pt/scripts",
-  "version": "0.6.4",
+  "version": "0.6.6",
   "description": "Less than react-scripts",
   "main": "index.js",
   "scripts": {
