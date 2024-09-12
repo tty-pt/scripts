@@ -13,7 +13,11 @@ function injectExternals(template, externals, publicPath) {
     `<script ${ord === "module" ? "type=\"module\"" : ""} src="${url.substring(0, 4) === "http" ? url : publicPath + url}"></script>`
   ).join('');
 
-  htmlContent = htmlContent.replace('</body>', `${scripts}</body>`);
+  if (htmlContent.indexOf("</body>") >= 0)
+    htmlContent = htmlContent.replace('</body>', `${scripts}</body>`);
+  else
+    htmlContent += scripts;
+
   htmlContent = htmlContent.replaceAll(
     '%PUBLIC_URL%',
     publicPath.substring(0, publicPath.length - 1),

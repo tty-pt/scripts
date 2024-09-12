@@ -6,12 +6,16 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const CopyPlugin = require('copy-webpack-plugin');
 const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
-const EsBuildPlugin = require("esbuild-webpack-plugin").default;
 const { SWCMinifyPlugin } = require("swc-webpack-plugin");
 const TerserPlugin = require('terser-webpack-plugin');
 const pkg = require(process.cwd() + "/package.json");
 const mainPkg = pkg;
 const scriptsPackage = require("./package.json");
+const cdn = mainPkg.cdn ?? {};
+
+for (const key in mainPkg.external)
+  if (!cdn[key])
+    cdn[key] = true;
 
 class IndexPlugin {
   constructor(publicPath) {
@@ -261,18 +265,18 @@ function otherExtProc(key, imp, extType) {
   let entry;
   let prefix;
   let ord = "main";
-  const cdnPrefix = mainPkg.cdn?.default === false
+  const cdnPrefix = cdn.default === false
     ? "./node_modules/$NAME"
-    : (mainPkg.cdn?.default ?? "https://unpkg.com/$NAME@$VERSION");
+    : (cdn.default ?? "https://unpkg.com/$NAME@$VERSION");
 
-  if (typeof mainPkg.cdn?.[key] === "string") {
-    const baseCdn = mainPkg.cdn[key];
-    const cdn = (baseCdn.substring(0, 4) === "http"
+  if (typeof cdn[key] === "string") {
+    const baseCdn = cdn[key];
+    const local_cdn = (baseCdn.substring(0, 4) === "http"
       ? baseCdn
       : cdnPrefix + "/" +  baseCdn
     ).replace("$NAME", key).replace("$VERSION", imports[key].pkg.version);
-    return [glob, cdn, undefined, "browser"];
-  } else if (mainPkg.cdn?.[key])
+    return [glob, local_cdn, undefined, "browser"];
+  } else if (cdn[key])
     prefix = cdnPrefix.replace("$NAME", key).replace("$VERSION", imports[key].pkg.version);
   else
     prefix = "./node_modules/" + key;
@@ -306,10 +310,10 @@ function moduleExtProc(key, imp, extType) {
   const prefix = extType === "module" ? "" : "module ";
   if (imp.pkg.module)
     return [prefix + key, imp.path + imp.pkg.module, imp.pkg.module, "module"];
-  else if (mainPkg.cdn?.[key]) {
-    const cdn = (mainPkg.cdn ?? "https://cdn.skypack.dev/$NAME@$VERSION")
+  else if (cdn[key]) {
+    const local_cdn = cdn[key]
       .replace("$NAME", dep).replace("$VERSION", depPkg.version);
-    return [prefix + key, cdn, undefined, "browser"];
+    return [prefix + key, local_cdn, undefined, "browser"];
   } else
     return otherExtProc(key, imp, extType);
 }
@@ -435,7 +439,7 @@ module.exports = function makeConfig(env) {
     // },
     resolve: {
       alias: {
-        ...(Object.entries(mainPkg.cdn ?? {})
+        ...(Object.entries(cdn)
           .filter(([_key, value]) => {
             try {
               require.resolve(value);
@@ -470,11 +474,9 @@ module.exports = function makeConfig(env) {
               ecma: 6, // or higher depending on your source code
             },
           })
-        ) : (mainPkg.minimizer === "swc" ? (
-          new SWCMinifyPlugin()
         ) : (
-          new EsBuildPlugin()
-        )),
+          new SWCMinifyPlugin()
+        ),
       ],
     },
   };
