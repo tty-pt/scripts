@@ -22,6 +22,7 @@ const scripts = {
       : scriptCmd("build") // TODO why custom script now?
     )
   ),
+  types: scriptCmd("types"),
   watch: "swc src --copy-files -w --out-dir dist",
   // "watch-dev": "nodemon --watch \"dist/**/*\" -e js ./dist/main.js",
   start: scriptCmd("start"), // watch + watch-dev
