@@ -1,41 +1,18 @@
 const path = require("path");
 const fs = require("fs");
 const webpack = require("webpack");
-const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const CopyPlugin = require('copy-webpack-plugin');
-const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
-const { SWCMinifyPlugin } = require("swc-webpack-plugin");
 const TerserPlugin = require('terser-webpack-plugin');
 const pkg = require(process.cwd() + "/package.json");
 const mainPkg = pkg;
 const scriptsPackage = require("./package.json");
+const { IndexPlugin, ImportsPlugin } = require("./plugins");
 const cdn = mainPkg.cdn ?? {};
 
 for (const key in mainPkg.external)
   if (!cdn[key])
     cdn[key] = true;
-
-class IndexPlugin {
-  constructor(publicPath) {
-    this.publicPath = publicPath.substring(0, publicPath.length - 1);
-  }
-
-  apply(compiler) {
-    compiler.hooks.compilation.tap('IndexPlugin', compilation => {
-      HtmlWebpackPlugin
-        .getHooks(compilation)
-        .afterTemplateExecution.tap('IndexPlugin', data => {
-          data.html = data.html.replace(
-            new RegExp('%PUBLIC_URL%', 'g'),
-            this.publicPath
-          );
-          // ).replace(new RegExp("\"./", "g"), this.publicPath);
-        });
-    });
-  }
-}
 
 class ExtInfoPlugin {
   constructor(extInfo) {
@@ -318,39 +295,6 @@ function moduleExtProc(key, imp, extType) {
     return otherExtProc(key, imp, extType);
 }
 
-class ImportsPlugin {
-  constructor(imports, module, publicPath) {
-    this.importMap = { imports: Object.entries(imports).reduce((a, [key, value]) => ({ ...a, [key]: value.path }), {}) };
-    this.imports = imports;
-    this.module = module;
-    this.publicPath = publicPath;
-  }
-
-  apply(compiler) {
-    compiler.hooks.compilation.tap('ImportMapPlugin', (compilation) => {
-      HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync(
-        'ImportsPlugin',
-        (data, cb) => {
-          let str = "";
-          const position = data.html.indexOf('<script');
-          if (this.module)
-            str += `<script type="importmap">${JSON.stringify(this.importMap)}</script>`;
-          for (const dep in this.imports) {
-            const imp = this.imports[dep];
-            const typeStr = imp.module ? `type="module"` : "";
-            const rootDir = imp.path.substring(0, "4") === "http" ? "" : this.publicPath;
-            str += `<script ${typeStr} src="${rootDir}${imp.path}"></script>`;
-          }
-          data.html = data.html.substring(0, position)
-            + str
-            + data.html.substring(position);
-          cb(null, data);
-        }
-      );
-    });
-  }
-}
-
 module.exports = function makeConfig(env) {
   const {
     development = env.development,
@@ -575,6 +519,7 @@ module.exports = function makeConfig(env) {
     }
 
     if (copyPatterns.length) {
+      const CopyPlugin = require("copy-webpack-plugin");
       targetConfig.plugins.push(new CopyPlugin({
         patterns: copyPatterns,
       }));
@@ -605,6 +550,8 @@ module.exports = function makeConfig(env) {
           new webpack.HotModuleReplacementPlugin()
         );
 
+        const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
+
         targetConfig.plugins.push(
           new ReactRefreshWebpackPlugin({
             overlay: {
@@ -612,10 +559,12 @@ module.exports = function makeConfig(env) {
             },
           }),
         );
-      } else
+      } else {
+        const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
         targetConfig.plugins.push(
           new WorkboxWebpackPlugin.GenerateSW(),
         );
+      }
     }
 
     targetConfig.plugins.unshift(
