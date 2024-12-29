@@ -467,15 +467,15 @@ module.exports = function makeConfig(env) {
       minimize: !development,
       usedExports: false,
       minimizer: [
-        mainPkg.minimizer === "terser" ? (
+        mainPkg.minimizer === "swc" ? (
+          new require("swc-webpack-plugin").SWCMinifyPlugin()
+        ) : (
           new TerserPlugin({
             // parallel: false,
             terserOptions: {
               ecma: 6, // or higher depending on your source code
             },
           })
-        ) : (
-          new SWCMinifyPlugin()
         ),
       ],
     },
