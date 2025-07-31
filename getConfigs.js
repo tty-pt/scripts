@@ -1,4 +1,5 @@
-const { makeConfig } = require("./webpack");
+const { bias } = require("./bias");
+const makeConfig = require(bias("base-config.js"));
 const fs = require("fs");
 const pkg = require(process.cwd() + "/package.json");
 const { externalGlobalPlugin } = require("esbuild-plugin-external-global");
@@ -66,14 +67,13 @@ function getConfigs(env) {
   const configs = {
     original: origConfigs,
     esbuild: [],
-    webpack: [],
   };
 
   for (const config of origConfigs) {
-    const libType = config.plugins[0].extInfo.type ?? "module";
-    const globalExternal = config.plugins[0].extInfo.externals;
+    const libType = config.extInfo.type ?? "module";
+    const globalExternal = config.extInfo.externals;
     const copyPatterns = libType === "iife" && pkg.template
-      ? config.plugins[0].extInfo.copyPatterns : [];
+      ? config.extInfo.copyPatterns : [];
     const type = esbuildTypes[libType];
     const externals = Object.entries(config.externals ?? {});
     const otherExternals = [];
@@ -177,8 +177,7 @@ function getConfigs(env) {
       }
 
       configs.esbuild.push(esConfig);
-    } else
-      configs.webpack.push(config);
+    }
   }
 
   return configs;

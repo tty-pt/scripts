@@ -5,7 +5,7 @@ This library is similar to react-scripts, in that it gives you default configura
 
 However, in it there's an effort to make customization and configuration as simple and flexible as possible.
 
-For example, a lot of things can be customized via simple package.json properties, or we can even provide the original configuration files for each of its constituent parts. We can easily override webpack.config.js, and others, or we can make use of the defaults, or a mix of both. Without need for additional dependencies.
+For example, a lot of things can be customized via simple package.json properties, or we can even provide the original configuration files for each of its constituent parts. We can easily override base-config.js, and others, or we can make use of the defaults, or a mix of both. Without need for additional dependencies.
 
 Additionally, it is faster than react-scripts. And it can save you having to specify all this devDependencies in your own projects. And from a lot of boilerplate.
 
@@ -83,27 +83,23 @@ And override the default cdn by setting cdn.default.
 ## serve
 This should be an array of strings, indicating which folders should be served by the development server.
 
-## stats
-Use this to output webpack stats to `/tmp/scripts.stats.json`.
-
 ## outputConfig
-Set this to "true" to output the generated webpack configuration to `/tmp/scripts.webpack.config.json`.
+Set this to "true" to output the generated configuration to `/tmp/scripts.config.json`.
 
 # Advanced Configuration
 In many situations, you don't have to do much. You can just set the package.json properties mentioned in the "Simple Configuration" section.
 
 However, if you wish to have more granular control, you can also provide your own configuration files. Or link those provided by scripts.
 
-## webpack
-If you wish to customize webpack, you can do something like:
+## more in-depth config
+If you wish to customize scripts even further,
+you can do something like:
 ```js
-const makeConfigs = require("@tty-pt/scripts/webpack.config");
-const CustomWebpackPlugin = require("./custom-webpack-plugin");
+const makeConfigs = require("@tty-pt/scripts/base-config");
 
 module.exports = function (env) {
 	const configs = makeConfigs(env);
-	for (const config of configs)
-		config.plugins.push(new CustomWebpackPlugin());
+    // apply even more changes - technical
 	return configs;
 };
 ```
