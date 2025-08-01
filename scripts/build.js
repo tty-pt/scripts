@@ -16,7 +16,6 @@ for (const config of configs.esbuild) {
         cp -Lr ${source} ${destination}
       `);
     }
-  delete config.globalExternal;
   delete config.copyPatterns;
   esbuild.build(config);
 }

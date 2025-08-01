@@ -71,15 +71,16 @@ function getConfigs(env) {
 
   for (const config of origConfigs) {
     const libType = config.extInfo.type ?? "module";
-    const globalExternal = config.extInfo.externals;
+    const allExternal = config.extInfo.externals;
+    const globalExternal = [];
+    const otherExternal = [];
     const copyPatterns = libType === "iife" && pkg.template
       ? config.extInfo.copyPatterns : [];
     const type = esbuildTypes[libType];
     const externals = Object.entries(config.externals ?? {});
-    const otherExternals = [];
-    const globalExternals = [];
 
-    for (const [key, value] of externals) {
+    // figure out which are global and which aren't
+    for (const [key, value] of allExternal) {
       let io = value.indexOf('.');
       if (io < 0)
         io = value.indexOf(' ');
@@ -93,9 +94,9 @@ function getConfigs(env) {
       }
 
       if (isGlobal)
-        globalExternals.push([key, realValue]);
+        globalExternal.push([key, realValue]);
       else
-        otherExternals.push(key);
+        otherExternal.push(key);
     }
 
     if (type) {
@@ -111,7 +112,7 @@ function getConfigs(env) {
         entryPoints: format === "esm" ? fg.sync([
           "src/**/*.(ts|tsx|js|jsx)",
           "!src/**/*.test.(ts|tsx|js|jsx)",
-        ]) : typeof pkg.entry === "string" ? [pkg.entry] : {
+        ]).concat[pkg.entry] : typeof pkg.entry === "string" ? [pkg.entry] : {
           ...entry,
           [toEntry(outfile)]: mainEntry,
         },
@@ -143,13 +144,17 @@ function getConfigs(env) {
         // ),
         publicPath: !isLib && !env.server ? (pkg.publicPath ?? "/") : (env.server ? "/" : ""),
         metafile: true,
-        // external: bundle ? otherExternals.concat(globalExternals.map(([key]) => key)) : undefined,
-        external: format === "cjs" ? otherExternals.concat(globalExternals.map(([key]) => key)) : undefined,
-        globalExternal,
+        external: bundle
+	      ? allExternal.map(([key]) => key)
+	      : undefined,
         copyPatterns,
         plugins: bundle ? (format === "cjs" ? [] : [
-          externalGlobalPlugin(globalExternals
-            .reduce((a, [key, value]) => ({ ...a, [key]: 'globalThis.' + value, }), {})
+          externalGlobalPlugin(
+		  globalExternal
+		  .reduce((a, [key, value]) => ({
+			  ...a,
+			  [key]: 'globalThis.' + value,
+		  }), {})
           ),
         ]) : [
           copy({
@@ -167,7 +172,7 @@ function getConfigs(env) {
             entryPoints: [pkg.entry],
             htmlTemplate: injectExternals(
               fs.readFileSync(process.cwd() + "/" + pkg.template, "utf-8"),
-              esConfig.globalExternal,
+              allExternal,
               env.server ? "." : esConfig.publicPath
             ),
             filename: "index.html",
