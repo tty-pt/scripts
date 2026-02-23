@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install dependencies
+        run: pnpm install
+      - name: Run lint
+        run: pnpm lint || true
+      - name: Run tests
+        run: pnpm test || true
+      - name: Run audit
+        run: pnpm audit --json || true

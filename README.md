@@ -130,3 +130,15 @@ Express can be configured via "src/setupProxy.js".
 - [@mov-ai/mov-fe-lib-react](https://github.com/MOV-AI/frontend-npm-lib-react/blob/dev/package.json)
 - [@mov-ai/mov-fe-lib-code-editor](https://github.com/MOV-AI/frontend-npm-lib-code-editor/blob/dev/package.json)
 - [@mov-ai/mov-fe-lib-ide](https://github.com/MOV-AI/frontend-npm-lib-ide/blob/dev/package.json)
+
+## Examples
+
+This repository contains small, runnable examples under `examples/`:
+
+- `examples/basic-app/` — a minimal React app wired to use `@tty-pt/scripts` locally.
+- `examples/library-usage/` — a minimal library project showing `scripts build` usage.
+
+To run an example:
+
+1. From repo root: `pnpm install`
+2. `cd examples/basic-app && pnpm install && pnpm start`
