@@ -1,68 +1,34 @@
 {
   "name": "@tty-pt/scripts",
-  "version": "0.7.2",
+  "version": "0.8.0-beta.0",
   "description": "Less (is more) than react-scripts",
-  "main": "index.js",
-  "scripts": {
-    "build": "echo @tty-pt/scripts skipping build",
-    "test": "echo no tests"
-  },
+  "main": "getConfigs.js",
   "keywords": [
     "react-scripts",
     "react",
-    "swc"
+    "esbuild"
   ],
   "author": "quirinpa",
   "license": "BSD-2-Clause",
-  "optionalDependencies": {
-    "@swc/core": "^1.7.26",
-    "@swc/jest": "^0.2.36",
-    "@testing-library/jest-dom": "^6.5.0",
-    "@testing-library/react": "^16.0.1",
-    "@types/node": "^20.11.30",
-    "@types/react": ">= 16.0.0 < 20.0.0",
-    "@types/react-dom": ">= 16.0.0 < 20.0.0",
-    "@types/testing-library__jest-dom": "^5.14.5",
-    "@typescript-eslint/parser": "^8.6.0",
-    "chokidar": "^4.0.0",
-    "connect-livereload": "^0.6.1",
-    "eslint": "^9.10.0",
-    "eslint-plugin-react": "^7.36.1",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "express": "^5.2.1",
-    "jest": "^30.2.0",
-    "jest-environment-jsdom": "^30.0.5",
-    "livereload": "^0.9.3",
-    "tslib": "^2.7.0",
-    "typescript": "^4.9.5"
-  },
   "dependencies": {
     "@craftamap/esbuild-plugin-html": "^0.9.0",
     "esbuild": "^0.25.8",
-    "esbuild-jest": "^0.5.0",
     "esbuild-plugin-copy": "^2.1.1",
     "esbuild-plugin-external-global": "^1.0.1",
     "fast-glob": "^3.3.2"
   },
   "bin": {
-    "scripts": "./bin/scripts.js"
+    "scripts": "bin/scripts.js"
   },
   "engines": {
     "node": ">=18",
     "pnpm": ">=7"
-  }
-  ,
+  },
   "pnpm": {
     "overrides": {
       "braces": "3.0.3",
       "micromatch": "4.0.8",
-      "glob": "10.5.0",
-      "minimatch": "10.2.1",
-      "ajv": "6.14.0",
-      "js-yaml": "4.1.1",
-      "qs": "6.14.1",
-      "lodash": "4.17.23",
-      "body-parser": "2.2.1"
+      "lodash": "4.17.23"
     }
   }
 }
